@@ -1,0 +1,20 @@
+Installing flask-galatea_cart
+=============================
+
+Prerequisites
+-------------
+
+ * Python 2.7 or later (http://www.python.org/)
+ * trytond (http://www.tryton.org/)
+ * trytond-galatea
+
+Installation
+------------
+
+Once you've downloaded and unpacked the flask-galatea-catalog source release,
+copy galatea-catalog directory in main flask app and rename to catalog.
+
+Edit your App flask and register a new blueprint:
+
+from catalog import catalog
+app.register_blueprint(catalog, url_prefix='/<lang>/catalog')
