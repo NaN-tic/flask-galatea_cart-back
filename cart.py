@@ -363,6 +363,22 @@ def cart_list(lang):
             'price': price[0]
             })
 
+    # Cross Sells
+    crossells = []
+    if CART_CROSSSELLS:
+        product_ids = []
+        for cproduct in carts:
+            product_ids.append(cproduct['product_id'])
+        CATALOG_FIELD_NAMES.append('esale_crosssells')
+        products = Template.read(product_ids, CATALOG_FIELD_NAMES)
+        crossells_ids = []
+        for product in products:
+            for crossell in product['esale_crosssells']:
+                if not crossell in crossells_ids and len(crossells_ids) < LIMIT_CROSSELLS:
+                    crossells_ids.append(crossell)
+        if crossells_ids:
+            crossells = Template.read(crossells_ids, CATALOG_FIELD_NAMES)
+
     #breadcumbs
     breadcrumbs = [{
         'slug': url_for('my-account', lang=g.language),
@@ -378,5 +394,6 @@ def cart_list(lang):
             carts=carts,
             form_address=form_address,
             addresses=addresses,
+            crossells=crossells,
             carriers=sorted(carriers, key=lambda k: k['price']),
             )
