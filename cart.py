@@ -48,7 +48,7 @@ class AddressForm(Form):
     city = TextField(_('City'), [validators.Required()])
     zip = TextField(_('Zip'), [validators.Required()])
     country = SelectField(_('Country'), [validators.Required(), ], coerce=int)
-    subdivision = IntegerField(_('State/County'), [validators.Required()])
+    subdivision = IntegerField(_('State/Country'), [validators.Required()])
     email = TextField(_('Email'), [validators.Required(), validators.Email()])
     phone = TextField(_('Phone'))
     vat_country = SelectField(_('VAT Country'), [validators.Required(), ])
@@ -101,7 +101,7 @@ def confirm(lang):
         party = Party(party)
     else:
         if not check_email(email):
-            flash(_('Email "{email}" not valid.').format(
+            flash(_('Email "{email}" is not valid.').format(
                 email=email), 'danger')
             return redirect(url_for('.cart', lang=g.language))
 
@@ -156,8 +156,8 @@ def confirm(lang):
     sales = Cart.create_sale(carts, values)
     if not sales:
         current_app.logger.error('Sale. Error create sale party %s' % party.id)
-        flash(_('It has not been able to convert to cart into an order. ' \
-            'Try again or contact us'), 'danger')
+        flash(_('It has not been able to convert the cart into an order. ' \
+            'Try again or contact us.'), 'danger')
         return redirect(url_for('.cart', lang=g.language))
     sale, = sales
 
@@ -173,7 +173,7 @@ def confirm(lang):
     if current_app.debug:
         current_app.logger.info('Sale. Create sale %s' % sale.id)
 
-    flash(_('Created sale order successfully.'), 'success')
+    flash(_('Sale order created successfully.'), 'success')
 
     return redirect(url_for('sale.sale', lang=g.language, id=sale.id))
 
@@ -195,8 +195,8 @@ def add(lang):
             try:
                 values[int(product[1])] = float(v)
             except:
-                flash(_('You try to add Qty not numeric. ' \
-                    'Sorry, we do not continue.'))
+                flash(_('You try to add no numeric quantity. ' \
+                    'The request has been stopped.'))
                 return redirect(url_for('.cart', lang=g.language))
 
     # Remove items in cart
@@ -241,7 +241,8 @@ def add(lang):
                         to_remove.append(cart)
                         break
                 except:
-                    flash(_('You try to remove not numeric cart. Abort.'))
+                    flash(_('You try to remove no numeric cart. ' \
+                        'The request has been stopped.'))
                     return redirect(url_for('.cart', lang=g.language))
 
     # Add/Update products data
@@ -297,7 +298,7 @@ def add(lang):
     # Add Cart
     if to_create:
         Cart.create(to_create)
-        flash(_('Added {total} product/s in your cart.').format(
+        flash(_('{total} product/s have been added in your cart.').format(
             total=len(to_create)), 'success')
 
     # Update Cart
@@ -307,13 +308,13 @@ def add(lang):
         total = len(to_update)
         if to_remove:
             total = total-len(to_remove)
-        flash(_('Updated {total} product/s in your cart.').format(
+        flash(_('{total} product/s have been updated in your cart.').format(
             total=total), 'success')
 
     # Delete Cart
     if to_remove:
         Cart.delete(to_remove)
-        flash(_('Deleted {total} product/s in your cart.').format(
+        flash(_('{total} product/s have been deleted in your cart.').format(
             total=len(to_remove)), 'success')
 
     return redirect(url_for('.cart', lang=g.language))
