@@ -48,7 +48,7 @@ class AddressForm(Form):
     city = TextField(_('City'), [validators.Required()])
     zip = TextField(_('Zip'), [validators.Required()])
     country = SelectField(_('Country'), [validators.Required(), ], coerce=int)
-    subdivision = IntegerField(_('State/Country'), [validators.Required()])
+    subdivision = IntegerField(_('Subdivision'), [validators.Required()])
     email = TextField(_('Email'), [validators.Required(), validators.Email()])
     phone = TextField(_('Phone'))
     vat_country = SelectField(_('VAT Country'), [validators.Required(), ])
