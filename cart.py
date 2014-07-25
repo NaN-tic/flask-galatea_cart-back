@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, current_app, g, url_for, \
     flash, redirect, session, request
 from galatea.tryton import tryton
-from flask.ext.babel import gettext as _
+from flask.ext.babel import gettext as _, lazy_gettext as __
 from flask.ext.wtf import Form
 from wtforms import TextField, SelectField, IntegerField, validators
 from decimal import Decimal
@@ -43,16 +43,16 @@ for country in vatnumber.countries():
 
 class AddressForm(Form):
     "Address form"
-    name = TextField(_('Name'), [validators.Required()])
-    street = TextField(_('Street'), [validators.Required()])
-    city = TextField(_('City'), [validators.Required()])
-    zip = TextField(_('Zip'), [validators.Required()])
-    country = SelectField(_('Country'), [validators.Required(), ], coerce=int)
-    subdivision = IntegerField(_('Subdivision'), [validators.Required()])
-    email = TextField(_('Email'), [validators.Required(), validators.Email()])
-    phone = TextField(_('Phone'))
-    vat_country = SelectField(_('VAT Country'), [validators.Required(), ])
-    vat_number = TextField(_('VAT Number'), [validators.Required()])
+    name = TextField(__('Name'), [validators.Required()])
+    street = TextField(__('Street'), [validators.Required()])
+    city = TextField(__('City'), [validators.Required()])
+    zip = TextField(__('Zip'), [validators.Required()])
+    country = SelectField(__('Country'), [validators.Required(), ], coerce=int)
+    subdivision = IntegerField(__('Subdivision'), [validators.Required()])
+    email = TextField(__('Email'), [validators.Required(), validators.Email()])
+    phone = TextField(__('Phone'))
+    vat_country = SelectField(__('VAT Country'), [validators.Required(), ])
+    vat_number = TextField(__('VAT Number'), [validators.Required()])
 
     def __init__(self, *args, **kwargs):
         Form.__init__(self, *args, **kwargs)
