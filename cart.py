@@ -10,11 +10,14 @@ import vatnumber
 
 cart = Blueprint('cart', __name__, template_folder='templates')
 
-shop = current_app.config.get('TRYTON_SALE_SHOP')
-shops = current_app.config.get('TRYTON_SALE_SHOPS')
+SHOP = current_app.config.get('TRYTON_SALE_SHOP')
+SHOPS = current_app.config.get('TRYTON_SALE_SHOPS')
+CART_CROSSSELLS = current_app.config.get('TRYTON_CART_CROSSSELLS', True)
+LIMIT_CROSSELLS = current_app.config.get('TRYTON_CATALOG_LIMIT_CROSSSELLS', 10)
 
 Cart = tryton.pool.get('sale.cart')
 Line = tryton.pool.get('sale.line')
+Template = tryton.pool.get('product.template')
 Product = tryton.pool.get('product.product')
 Address = tryton.pool.get('party.address')
 Shop = tryton.pool.get('sale.shop')
@@ -32,6 +35,7 @@ CART_ORDER = [
     ('cart_date', 'DESC'),
     ('id', 'DESC'),
     ]
+from catalog.catalog import CATALOG_FIELD_NAMES
 
 VAT_COUNTRIES = [('', '')]
 for country in vatnumber.countries():
@@ -66,7 +70,7 @@ def confirm(lang):
     '''Convert carts to sale order
     Return to Sale Details
     '''
-    sshop = Shop(shop)
+    shop = Shop(SHOP)
     data = request.form
 
     party = session.get('customer')
@@ -101,7 +105,7 @@ def confirm(lang):
                 email=email), 'danger')
             return redirect(url_for('.cart', lang=g.language))
 
-        party = Party.esale_create_party(sshop, {
+        party = Party.esale_create_party(shop, {
             'name': name,
             'esale_email': email,
             'vat_country': data.get('vat_country', None),
@@ -130,7 +134,7 @@ def confirm(lang):
             'email': email,
             'fax': None,
             }
-        address = Address.esale_create_address(sshop, party, values)
+        address = Address.esale_create_address(shop, party, values)
 
     # Carts are same party to create a new sale
     Cart.write(carts, {'party': party})
@@ -158,7 +162,7 @@ def confirm(lang):
     sale, = sales
 
     # Add shipment line
-    product = sshop.esale_delivery_product
+    product = shop.esale_delivery_product
     shipment_price = Decimal(data.get('carrier-cost'))
     shipment_line = SaleLine.get_shipment_line(product, shipment_price, sale)
     shipment_line.save()
@@ -225,7 +229,7 @@ def add(lang):
         ('id', 'in', products_current_cart),
         ('template.esale_available', '=', True),
         ('template.esale_active', '=', True),
-        ('template.esale_saleshops', 'in', shops),
+        ('template.esale_saleshops', 'in', SHOPS),
         ], fields_names=['code', 'template.esale_price'])
 
     # Delete products data
@@ -318,12 +322,12 @@ def add(lang):
 @tryton.transaction()
 def cart_list(lang):
     '''Cart by user or session'''
-    sshop = Shop(shop)
+    shop = Shop(SHOP)
 
     form_address = AddressForm(
-        country=sshop.esale_country.id,
-        vat_country=sshop.esale_country.code)
-    countries = [(c.id, c.name) for c in sshop.esale_countrys]
+        country=shop.esale_country.id,
+        vat_country=shop.esale_country.code)
+    countries = [(c.id, c.name) for c in shop.esale_countrys]
     form_address.country.choices = countries
     form_address.vat_country.choices = VAT_COUNTRIES
 
@@ -349,7 +353,7 @@ def cart_list(lang):
             ], order=[('sequence', 'ASC'), ('id', 'ASC')])
 
     carriers = []
-    for c in sshop.esale_carriers:
+    for c in shop.esale_carriers:
         carrier_id = c.id
         carrier = Carrier(carrier_id)
         price = carrier.get_sale_price()
@@ -370,7 +374,7 @@ def cart_list(lang):
 
     return render_template('cart.html',
             breadcrumbs=breadcrumbs,
-            shop=sshop,
+            shop=shop,
             carts=carts,
             form_address=form_address,
             addresses=addresses,
