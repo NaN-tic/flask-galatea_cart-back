@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, current_app, g, url_for, \
-    flash, redirect, session, request
+    flash, redirect, session, request, jsonify
 from galatea.tryton import tryton
+from galatea.utils import thumbnail
 from flask.ext.babel import gettext as _, lazy_gettext as __
 from flask.ext.wtf import Form
 from wtforms import TextField, SelectField, IntegerField, validators
@@ -28,7 +29,7 @@ Sale = tryton.pool.get('sale.sale')
 SaleLine = tryton.pool.get('sale.line')
 
 CART_FIELD_NAMES = [
-    'cart_date', 'product_id', 'product.rec_name', 'product.template.esale_slug',
+    'cart_date', 'product_id', 'template_id', 'product.rec_name', 'product.template.esale_slug',
     'quantity', 'unit_price', 'untaxed_amount', 'total_amount',
     ]
 CART_ORDER = [
@@ -63,6 +64,55 @@ class ShipmentAddressForm(Form):
             return False
         return True
 
+@cart.route('/my-cart', methods=['GET', 'PUT'], endpoint="my-cart")
+@tryton.transaction()
+def my_cart(lang):
+    '''All Carts JSON'''
+    items = []
+
+    shop = Shop(SHOP)
+    domain = [
+        ('state', '=', 'draft'),
+        ]
+    if session.get('user'): # login user
+        domain.append(['OR', 
+            ('sid', '=', session.sid),
+            ('galatea_user', '=', session['user']),
+            ])
+    else: # anonymous user
+        domain.append(
+            ('sid', '=', session.sid),
+            )
+
+    field_names =  ['product.rec_name', 'product.template.esale_slug',
+        'product.template.esale_default_images', 'quantity',
+        'unit_price', 'untaxed_amount', 'total_amount',
+        ]
+    carts = Cart.search_read(domain, order=CART_ORDER, fields_names=field_names)
+
+    for cart in carts:
+        img = cart['product.template.esale_default_images']
+        image = current_app.config.get('BASE_IMAGE')
+        if img.get('small'):
+            thumbname = img['small']['name']
+            filename = img['small']['digest']
+            image = thumbnail(filename, thumbname, '200x200')
+        items.append({
+            'id': cart['id'],
+            'name': cart['product.rec_name'],
+            'url': url_for('catalog.product_'+g.language, lang=g.language,
+                slug=cart['product.template.esale_slug']),
+            'quantity': cart['quantity'],
+            'unit_price': cart['unit_price'],
+            'untaxed_amount': cart['untaxed_amount'],
+            'total_amount': cart['total_amount'],
+            'image': image,
+            })
+
+    return jsonify(result={
+        'currency': shop.esale_currency.symbol,
+        'items': items,
+        })
 
 @cart.route("/confirm/", methods=["POST"], endpoint="confirm")
 @tryton.transaction()
@@ -189,15 +239,27 @@ def add(lang):
 
     # Convert form values to dict values {'id': 'qty'}
     values = {}
-    for k, v in request.form.iteritems():
-        product = k.split('-')
-        if product[0] == 'product':
-            try:
-                values[int(product[1])] = float(v)
-            except:
-                flash(_('You try to add no numeric quantity. ' \
-                    'The request has been stopped.'))
-                return redirect(url_for('.cart', lang=g.language))
+
+    # json request
+    if request.json:
+        for data in request.json:
+            if data.get('name'):
+                product = data.get('name').split('-')
+                try:
+                    values[int(product[1])] = float(data.get('value'))
+                except:
+                    return False
+    # post request
+    else:
+        for k, v in request.form.iteritems():
+            product = k.split('-')
+            if product[0] == 'product':
+                try:
+                    values[int(product[1])] = float(v)
+                except:
+                    flash(_('You try to add no numeric quantity. ' \
+                        'The request has been stopped.'))
+                    return redirect(url_for('.cart', lang=g.language))
 
     # Remove items in cart
     removes = request.form.getlist('remove')
@@ -317,7 +379,10 @@ def add(lang):
         flash(_('{total} product/s have been deleted in your cart.').format(
             total=len(to_remove)), 'success')
 
-    return redirect(url_for('.cart', lang=g.language))
+    if request.json:
+        return jsonify(result=True)
+    else:
+        return redirect(url_for('.cart', lang=g.language))
 
 @cart.route("/checkout/", methods=["GET", "POST"], endpoint="checkout")
 @tryton.transaction()
@@ -345,7 +410,7 @@ def checkout(lang):
         return redirect(url_for('.cart', lang=g.language))
 
     # Shipment Address
-    form_shipment_address = ShipmentAddressForm()
+    #~ form_shipment_address = ShipmentAddressForm()
     shipment_address = request.form.get('shipment_address')
     if not shipment_address:
         flash(_('Select a Shipment Address.'), 'danger')
@@ -487,14 +552,14 @@ def cart_list(lang):
     # Cross Sells
     crossells = []
     if CART_CROSSSELLS:
-        product_ids = []
+        template_ids = []
         for cproduct in carts:
-            product_ids.append(cproduct['product_id'])
+            template_ids.append(cproduct['template_id'])
         CATALOG_FIELD_NAMES.append('esale_crosssells')
-        products = Template.read(product_ids, CATALOG_FIELD_NAMES)
+        templates = Template.read(template_ids, CATALOG_FIELD_NAMES)
         crossells_ids = []
-        for product in products:
-            for crossell in product['esale_crosssells']:
+        for template in templates:
+            for crossell in template['esale_crosssells']:
                 if not crossell in crossells_ids and len(crossells_ids) < LIMIT_CROSSELLS:
                     crossells_ids.append(crossell)
         if crossells_ids:
