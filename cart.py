@@ -41,16 +41,16 @@ VAT_COUNTRIES = [('', '')]
 for country in vatnumber.countries():
     VAT_COUNTRIES.append((country, country))
 
-class AddressForm(Form):
-    "Address form"
-    name = TextField(__('Name'), [validators.Required()])
-    street = TextField(__('Street'), [validators.Required()])
-    city = TextField(__('City'), [validators.Required()])
-    zip = TextField(__('Zip'), [validators.Required()])
-    country = SelectField(__('Country'), [validators.Required(), ], coerce=int)
-    subdivision = IntegerField(__('Subdivision'), [validators.Required()])
-    email = TextField(__('Email'), [validators.Required(), validators.Email()])
-    phone = TextField(__('Phone'))
+class ShipmentAddressForm(Form):
+    "Shipment Address form"
+    shipment_name = TextField(__('Name'), [validators.Required()])
+    shipment_street = TextField(__('Street'), [validators.Required()])
+    shipment_city = TextField(__('City'), [validators.Required()])
+    shipment_zip = TextField(__('Zip'), [validators.Required()])
+    shipment_country = SelectField(__('Country'), [validators.Required(), ], coerce=int)
+    shipment_subdivision = IntegerField(__('Subdivision'), [validators.Required()])
+    shipment_email = TextField(__('Email'), [validators.Required(), validators.Email()])
+    shipment_phone = TextField(__('Phone'))
     vat_country = SelectField(__('VAT Country'), [validators.Required(), ])
     vat_number = TextField(__('VAT Number'), [validators.Required()])
 
@@ -75,8 +75,8 @@ def confirm(lang):
 
     party = session.get('customer')
     shipment_address = data.get('shipment_address')
-    name = data.get('name')
-    email = data.get('email')
+    name = data.get('shipment_name')
+    email = data.get('shipment_email')
 
     # Get all carts
     domain = [
@@ -117,20 +117,20 @@ def confirm(lang):
         address = Address(shipment_address)
     else:
         country = None
-        if data.get('country'):
-            country = int(data.get('country'))
+        if data.get('shipment_country'):
+            country = int(data.get('shipment_country'))
         subdivision = None
-        if data.get('subdivision'):
-            subdivision = int(data.get('subdivision'))
+        if data.get('shipment_subdivision'):
+            subdivision = int(data.get('shipment_subdivision'))
 
         values = {
             'name': name,
-            'street': data.get('street'),
-            'city': data.get('city'),
-            'zip': data.get('zip'),
+            'street': data.get('shipment_street'),
+            'city': data.get('shipment_city'),
+            'zip': data.get('shipment_zip'),
             'country': country,
             'subdivision': subdivision,
-            'phone': data.get('phone'),
+            'phone': data.get('shipment_phone'),
             'email': email,
             'fax': None,
             }
@@ -319,18 +319,138 @@ def add(lang):
 
     return redirect(url_for('.cart', lang=g.language))
 
+@cart.route("/checkout/", methods=["GET", "POST"], endpoint="checkout")
+@tryton.transaction()
+def checkout(lang):
+    '''Checkout user or session'''
+    values = {}
+    errors = []
+    shop = Shop(SHOP)
+
+    domain = [
+        ('state', '=', 'draft'),
+        ]
+    if session.get('user'): # login user
+        domain.append(['OR', 
+            ('sid', '=', session.sid),
+            ('galatea_user', '=', session['user']),
+            ])
+    else: # anonymous user
+        domain.append(
+            ('sid', '=', session.sid),
+            )
+    carts = Cart.search_read(domain, order=CART_ORDER, fields_names=CART_FIELD_NAMES)
+    if not carts:
+        flash(_('There are not products in your cart.'), 'danger')
+        return redirect(url_for('.cart', lang=g.language))
+
+    # Shipment Address
+    form_shipment_address = ShipmentAddressForm()
+    shipment_address = request.form.get('shipment_address')
+    if not shipment_address:
+        flash(_('Select a Shipment Address.'), 'danger')
+        return redirect(url_for('.cart', lang=g.language))
+    values['shipment_address'] = shipment_address
+    if shipment_address == 'new-address':
+        values['shipment_name'] = request.form.get('shipment_name')
+        values['shipment_street'] = request.form.get('shipment_street')
+        values['shipment_zip'] = request.form.get('shipment_zip')
+        values['shipment_city'] = request.form.get('shipment_city')
+        values['shipment_country'] = request.form.get('shipment_country')
+        values['shipment_subdivision'] = request.form.get('shipment_subdivision')
+        values['shipment_email'] = request.form.get('shipment_email')
+        values['shipment_phone'] = request.form.get('shipment_phone')
+
+        if not values['shipment_name'] or not values['shipment_street'] \
+                or not values['shipment_zip'] or not values['shipment_city'] \
+                or not values['shipment_email']:
+            errors.append(_('Error when validate Shipment Address. ' \
+                'Please, return to cart and complete Shipment Address'))
+
+        if not check_email(values['shipment_email']):
+            errors.append(_('Email not valid.'))
+
+        vat_country = request.form.get('vat_country')
+        vat_number = request.form.get('vat_number')
+        values['vat_country'] = vat_country
+        values['vat_number'] = vat_number
+
+        vat_number = '%s%s' % (vat_country.upper(), vat_number)
+        if not vatnumber.check_vat(vat_number):
+            errors.append(_('VAT not valid.'))
+
+    elif session.get('customer'):
+        addresses = Address.search([
+            ('party', '=', session['customer']),
+            ('id', '=', int(shipment_address)),
+            ('active', '=', True),
+            ], order=[('sequence', 'ASC'), ('id', 'ASC')])
+        if addresses:
+            address, = addresses
+            values['shipment_address_name'] = address.rec_name
+        else:
+            errors.append(_('We can found address related yours address. ' \
+                'Please, select a new address in Shipment Address'))
+    else:
+        errors.append(_('You not select new address and not a customer. ' \
+            'Please, select a new address in Shipment Address'))
+
+    # Payment
+    payment = int(request.form.get('payment'))
+    for p in shop.esale_payments:
+        if p.id == payment:
+            values['payment'] = payment
+            values['payment_name'] = p.rec_name
+
+    # Carrier
+    carrier = int(request.form.get('carrier'))
+    for c in shop.esale_carriers:
+        if c.id == carrier:
+            values['carrier'] = carrier
+            values['carrier_name'] = c.rec_name
+    values['carrier_cost'] = request.form.get('carrier-cost')
+
+    # Comment
+    values['comment'] = request.form.get('comment')
+
+    # Breadcumbs
+    breadcrumbs = [{
+        'slug': url_for('.cart', lang=g.language),
+        'name': _('Cart'),
+        }]
+
+    # Breadcumbs Cart
+    bcarts = [{
+        'slug': url_for('.cart', lang=g.language),
+        'name': _('Cart'),
+        }, {
+        'slug': url_for('.checkout', lang=g.language),
+        'name': _('Checkout'),
+        }, {
+        'name': _('Order'),
+        }]
+
+    return render_template('checkout.html',
+            breadcrumbs=breadcrumbs,
+            bcarts=bcarts,
+            shop=shop,
+            carts=carts,
+            values=values,
+            errors=errors,
+            )
+
 @cart.route("/", endpoint="cart")
 @tryton.transaction()
 def cart_list(lang):
     '''Cart by user or session'''
     shop = Shop(SHOP)
 
-    form_address = AddressForm(
-        country=shop.esale_country.id,
+    form_shipment_address = ShipmentAddressForm(
+        shipment_country=shop.esale_country.id,
         vat_country=shop.esale_country.code)
     countries = [(c.id, c.name) for c in shop.esale_countrys]
-    form_address.country.choices = countries
-    form_address.vat_country.choices = VAT_COUNTRIES
+    form_shipment_address.shipment_country.choices = countries
+    form_shipment_address.vat_country.choices = VAT_COUNTRIES
 
     domain = [
         ('state', '=', 'draft'),
@@ -349,8 +469,8 @@ def cart_list(lang):
     addresses = None
     if session.get('customer'):
         addresses = Address.search([
-            ("party", "=", session['customer']),
-            ("active", "=", True),
+            ('party', '=', session['customer']),
+            ('active', '=', True),
             ], order=[('sequence', 'ASC'), ('id', 'ASC')])
 
     carriers = []
@@ -380,20 +500,28 @@ def cart_list(lang):
         if crossells_ids:
             crossells = Template.read(crossells_ids, CATALOG_FIELD_NAMES)
 
-    #breadcumbs
+    # Breadcumbs
     breadcrumbs = [{
-        'slug': url_for('my-account', lang=g.language),
-        'name': _('My Account'),
-        }, {
         'slug': url_for('.cart', lang=g.language),
         'name': _('Cart'),
         }]
 
+    # Breadcumbs Cart
+    bcarts = [{
+        'slug': url_for('.cart', lang=g.language),
+        'name': _('Cart'),
+        }, {
+        'name': _('Checkout'),
+        }, {
+        'name': _('Order'),
+        }]
+
     return render_template('cart.html',
             breadcrumbs=breadcrumbs,
+            bcarts=bcarts,
             shop=shop,
             carts=carts,
-            form_address=form_address,
+            form_shipment_address=form_shipment_address,
             addresses=addresses,
             crossells=crossells,
             carriers=sorted(carriers, key=lambda k: k['price']),
