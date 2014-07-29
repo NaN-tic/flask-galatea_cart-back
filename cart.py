@@ -90,6 +90,7 @@ def my_cart(lang):
         ]
     carts = Cart.search_read(domain, order=CART_ORDER, fields_names=field_names)
 
+    decimals = "%0."+str(shop.esale_currency.digits)+"f" # "%0.2f" euro
     for cart in carts:
         img = cart['product.template.esale_default_images']
         image = current_app.config.get('BASE_IMAGE')
@@ -103,9 +104,9 @@ def my_cart(lang):
             'url': url_for('catalog.product_'+g.language, lang=g.language,
                 slug=cart['product.template.esale_slug']),
             'quantity': cart['quantity'],
-            'unit_price': cart['unit_price'],
-            'untaxed_amount': cart['untaxed_amount'],
-            'total_amount': cart['total_amount'],
+            'unit_price': float(Decimal(decimals % cart['unit_price'])),
+            'untaxed_amount': float(Decimal(decimals % cart['untaxed_amount'])),
+            'total_amount': float(Decimal(decimals % cart['total_amount'])),
             'image': image,
             })
 
