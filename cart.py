@@ -288,12 +288,12 @@ def add(lang):
     products_in_cart = [c.product.id for c in carts]
 
     # Get product data
-    products = Product.search_read([
+    products = Product.search([
         ('id', 'in', products_current_cart),
         ('template.esale_available', '=', True),
         ('template.esale_active', '=', True),
         ('template.esale_saleshops', 'in', SHOPS),
-        ], fields_names=['code', 'template.esale_price'])
+        ])
 
     # Delete products data
     if removes:
@@ -310,29 +310,23 @@ def add(lang):
 
     # Add/Update products data
     for product_id, qty in values.iteritems():
-        # Get current product from products
-        product_values = None
-        for product in products:
-            if product_id == product['id']:
-                product_values = product
+        for p in products:
+            if p.id == product_id:
+                product = p
                 break
 
-        if not product_values and product_id in products_in_cart: # Remove products cart
-            to_remove_products.append(product_id)
-            continue
+        prices = Product.get_sale_price([product], qty)
 
         # Create data
         if product_id not in products_in_cart and qty > 0:
-            for product in products:
-                if product['id'] == product_id:
-                    to_create.append({
-                        'party': session.get('customer', None),
-                        'quantity': qty,
-                        'product': product['id'],
-                        'unit_price': product_values['template.esale_price'],
-                        'sid': session.sid,
-                        'galatea_user': session.get('user', None),
-                    })
+            to_create.append({
+                'party': session.get('customer', None),
+                'quantity': qty,
+                'product': product.id,
+                'unit_price': prices.get(product.id),
+                'sid': session.sid,
+                'galatea_user': session.get('user', None),
+            })
 
         # Update data
         if product_id in products_in_cart: 
@@ -343,7 +337,7 @@ def add(lang):
                             'cart': cart,
                             'values': {
                                 'quantity': qty,
-                                'unit_price': product_values['template.esale_price'],
+                                'unit_price': prices.get(product.id),
                                 },
                             })
                     else: # Remove data when qty <= 0
