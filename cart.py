@@ -211,10 +211,12 @@ def confirm(lang):
     sale, = sales
 
     # Add shipment line
-    product = shop.esale_delivery_product
-    shipment_price = Decimal(data.get('carrier-cost'))
-    shipment_line = SaleLine.get_shipment_line(product, shipment_price, sale)
-    shipment_line.save()
+    carrier_price = data.get('carrier-cost')
+    if carrier_price:
+        product = shop.esale_delivery_product
+        shipment_price = Decimal(carrier_price)
+        shipment_line = SaleLine.get_shipment_line(product, shipment_price, sale)
+        shipment_line.save()
 
     # sale draft to quotation
     Sale.quote([sale])
@@ -467,15 +469,16 @@ def checkout(lang):
             values['payment_name'] = p.rec_name
 
     # Carrier
-    carrier_id = int(request.form.get('carrier'))
-    carrier = Carrier(carrier_id)
-    carrier_price = carrier.get_sale_price() # return price, currency
-    price = carrier_price[0]
-    price_w_tax = carrier.get_sale_price_w_tax(price)
-    values['carrier'] = carrier
-    values['carrier_name'] = carrier.rec_name
-    values['carrier_cost'] = price
-    values['carrier_cost_w_tax'] = price_w_tax
+    carrier_id = request.form.get('carrier')
+    if carrier_id:
+        carrier = Carrier(carrier_id)
+        carrier_price = carrier.get_sale_price() # return price, currency
+        price = carrier_price[0]
+        price_w_tax = carrier.get_sale_price_w_tax(price)
+        values['carrier'] = carrier
+        values['carrier_name'] = carrier.rec_name
+        values['carrier_cost'] = price
+        values['carrier_cost_w_tax'] = price_w_tax
 
     # Comment
     values['comment'] = request.form.get('comment')
@@ -532,6 +535,7 @@ def cart_list(lang):
             ('sid', '=', session.sid),
             )
     carts = Cart.search_read(domain, order=CART_ORDER, fields_names=CART_FIELD_NAMES)
+    products = [cart['product_id'] for cart in carts]
 
     addresses = None
     if session.get('customer'):
@@ -540,19 +544,22 @@ def cart_list(lang):
             ('active', '=', True),
             ], order=[('sequence', 'ASC'), ('id', 'ASC')])
 
+    stockable = Carrier.get_products_stockable(products)
+
     carriers = []
-    for c in shop.esale_carriers:
-        carrier_id = c.id
-        carrier = Carrier(carrier_id)
-        carrier_price = carrier.get_sale_price() # return price, currency
-        price = carrier_price[0]
-        price_w_tax = carrier.get_sale_price_w_tax(price)
-        carriers.append({
-            'id': carrier_id,
-            'name': c.rec_name,
-            'price': price,
-            'price_w_tax': price_w_tax,
-            })
+    if stockable:
+        for c in shop.esale_carriers:
+            carrier_id = c.id
+            carrier = Carrier(carrier_id)
+            carrier_price = carrier.get_sale_price() # return price, currency
+            price = carrier_price[0]
+            price_w_tax = carrier.get_sale_price_w_tax(price)
+            carriers.append({
+                'id': carrier_id,
+                'name': c.rec_name,
+                'price': price,
+                'price_w_tax': price_w_tax,
+                })
 
     # Cross Sells
     crossells = []
@@ -595,4 +602,5 @@ def cart_list(lang):
             addresses=addresses,
             crossells=crossells,
             carriers=sorted(carriers, key=lambda k: k['price']),
+            stockable=stockable,
             )
