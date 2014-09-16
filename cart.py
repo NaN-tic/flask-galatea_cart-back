@@ -467,12 +467,15 @@ def checkout(lang):
             values['payment_name'] = p.rec_name
 
     # Carrier
-    carrier = int(request.form.get('carrier'))
-    for c in shop.esale_carriers:
-        if c.id == carrier:
-            values['carrier'] = carrier
-            values['carrier_name'] = c.rec_name
-    values['carrier_cost'] = request.form.get('carrier-cost')
+    carrier_id = int(request.form.get('carrier'))
+    carrier = Carrier(carrier_id)
+    carrier_price = carrier.get_sale_price() # return price, currency
+    price = carrier_price[0]
+    price_w_tax = carrier.get_sale_price_w_tax(price)
+    values['carrier'] = carrier
+    values['carrier_name'] = carrier.rec_name
+    values['carrier_cost'] = price
+    values['carrier_cost_w_tax'] = price_w_tax
 
     # Comment
     values['comment'] = request.form.get('comment')
@@ -541,11 +544,14 @@ def cart_list(lang):
     for c in shop.esale_carriers:
         carrier_id = c.id
         carrier = Carrier(carrier_id)
-        price = carrier.get_sale_price()
+        carrier_price = carrier.get_sale_price() # return price, currency
+        price = carrier_price[0]
+        price_w_tax = carrier.get_sale_price_w_tax(price)
         carriers.append({
             'id': carrier_id,
             'name': c.rec_name,
-            'price': price[0]
+            'price': price,
+            'price_w_tax': price_w_tax,
             })
 
     # Cross Sells
