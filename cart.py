@@ -315,6 +315,9 @@ def add(lang):
                 product = p
                 break
 
+        if not product.add_cart:
+            continue
+
         prices = Product.get_sale_price([product], qty)
 
         # Create data
