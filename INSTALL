@@ -8,6 +8,7 @@ Prerequisites
  * trytond (http://www.tryton.org/)
  * trytond-galatea
  * trytond-galatea_esale
+ * trytond-esale_product
  * flask-catalog
 
 Installation
