@@ -378,6 +378,7 @@ def add(lang):
             total=len(to_remove)), 'success')
 
     if request.json:
+        session.pop('_flashes', None)
         return jsonify(result=True)
     else:
         return redirect(url_for('.cart', lang=g.language))
