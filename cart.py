@@ -318,30 +318,32 @@ def add(lang):
         if not product.add_cart:
             continue
 
-        prices = Product.get_sale_price([product], qty)
+        cart = Cart()
+        cart.party = session.get('customer', None)
+        cart.quantity = qty
+        cart.product = product.id
+        cart.sid = session.sid
+        cart.galatea_user = session.get('user', None)
+        vals = cart.on_change_product()
 
         # Create data
         if product_id not in products_in_cart and qty > 0:
-            to_create.append({
-                'party': session.get('customer', None),
-                'quantity': qty,
-                'product': product.id,
-                'unit_price': prices.get(product.id),
-                'sid': session.sid,
-                'galatea_user': session.get('user', None),
-            })
+            vals['party'] = session.get('customer', None)
+            vals['quantity'] = qty
+            vals['product'] = product.id
+            vals['sid'] = session.sid
+            vals['galatea_user'] = session.get('user', None)
+            to_create.append(vals)
 
         # Update data
         if product_id in products_in_cart: 
             for cart in carts:
                 if cart.product.id == product_id:
                     if qty > 0:
+                        vals['quantity'] = qty
                         to_update.append({
                             'cart': cart,
-                            'values': {
-                                'quantity': qty,
-                                'unit_price': prices.get(product.id),
-                                },
+                            'values': vals,
                             })
                     else: # Remove data when qty <= 0
                         to_remove.append(cart)
