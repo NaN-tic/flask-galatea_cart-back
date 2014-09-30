@@ -28,7 +28,7 @@ SaleLine = tryton.pool.get('sale.line')
 
 CART_FIELD_NAMES = [
     'cart_date', 'product_id', 'template_id', 'product.rec_name', 'product.template.esale_slug',
-    'quantity', 'unit_price', 'untaxed_amount', 'total_amount',
+    'quantity', 'unit_price', 'unit_price_w_tax', 'untaxed_amount', 'untaxed_amount', 'amount_w_tax',
     ]
 CART_ORDER = [
     ('cart_date', 'DESC'),
