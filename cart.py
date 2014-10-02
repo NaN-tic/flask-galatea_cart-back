@@ -27,14 +27,15 @@ Sale = tryton.pool.get('sale.sale')
 SaleLine = tryton.pool.get('sale.line')
 
 CART_FIELD_NAMES = [
-    'cart_date', 'product_id', 'template_id', 'product.rec_name', 'product.template.esale_slug',
-    'quantity', 'unit_price', 'unit_price_w_tax', 'untaxed_amount', 'untaxed_amount', 'amount_w_tax',
+    'cart_date', 'product_id', 'template_id', 'quantity',
+    'product.rec_name', 'product.template.esale_slug', 'product.template.esale_default_images',
+    'unit_price', 'unit_price_w_tax', 'untaxed_amount', 'amount_w_tax',
     ]
 CART_ORDER = [
     ('cart_date', 'DESC'),
     ('id', 'DESC'),
     ]
-from catalog.catalog import CATALOG_FIELD_NAMES
+from catalog.catalog import CATALOG_TEMPLATE_FIELD_NAMES
 
 VAT_COUNTRIES = [('', '')]
 for country in vatnumber.countries():
@@ -82,11 +83,7 @@ def my_cart(lang):
             ('sid', '=', session.sid),
             )
 
-    field_names =  ['product.rec_name', 'product.template.esale_slug',
-        'product.template.esale_default_images', 'quantity',
-        'unit_price', 'untaxed_amount', 'total_amount',
-        ]
-    carts = Cart.search_read(domain, order=CART_ORDER, fields_names=field_names)
+    carts = Cart.search_read(domain, order=CART_ORDER, fields_names=CART_FIELD_NAMES)
 
     decimals = "%0."+str(shop.esale_currency.digits)+"f" # "%0.2f" euro
     for cart in carts:
@@ -103,8 +100,9 @@ def my_cart(lang):
                 slug=cart['product.template.esale_slug']),
             'quantity': cart['quantity'],
             'unit_price': float(Decimal(decimals % cart['unit_price'])),
+            'unit_price_w_tax': float(Decimal(decimals % cart['unit_price_w_tax'])),
             'untaxed_amount': float(Decimal(decimals % cart['untaxed_amount'])),
-            'total_amount': float(Decimal(decimals % cart['total_amount'])),
+            'amount_w_tax': float(Decimal(decimals % cart['amount_w_tax'])),
             'image': image,
             })
 
@@ -567,15 +565,15 @@ def cart_list(lang):
         template_ids = []
         for cproduct in carts:
             template_ids.append(cproduct['template_id'])
-        CATALOG_FIELD_NAMES.append('esale_crosssells')
-        templates = Template.read(template_ids, CATALOG_FIELD_NAMES)
+        CATALOG_TEMPLATE_FIELD_NAMES.append('esale_crosssells')
+        templates = Template.read(template_ids, CATALOG_TEMPLATE_FIELD_NAMES)
         crossells_ids = []
         for template in templates:
             for crossell in template['esale_crosssells']:
                 if not crossell in crossells_ids and len(crossells_ids) < LIMIT_CROSSELLS:
                     crossells_ids.append(crossell)
         if crossells_ids:
-            crossells = Template.read(crossells_ids, CATALOG_FIELD_NAMES)
+            crossells = Template.read(crossells_ids, CATALOG_TEMPLATE_FIELD_NAMES)
 
     # Breadcumbs
     breadcrumbs = [{
