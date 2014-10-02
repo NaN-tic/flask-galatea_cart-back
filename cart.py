@@ -72,6 +72,7 @@ def my_cart(lang):
     shop = Shop(SHOP)
     domain = [
         ('state', '=', 'draft'),
+        ('shop', '=', SHOP),
         ]
     if session.get('user'): # login user
         domain.append(['OR', 
@@ -128,6 +129,7 @@ def confirm(lang):
     # Get all carts
     domain = [
         ('state', '=', 'draft'),
+        ('shop', '=', SHOP),
         ]
     if session.get('user'): # login user
         domain.append(['OR', 
@@ -269,6 +271,7 @@ def add(lang):
     # Search current cart by user or session
     domain = [
         ('state', '=', 'draft'),
+        ('shop', '=', SHOP),
         ('product.id', 'in', products_current_cart)
         ]
     if session.get('user'): # login user
@@ -393,6 +396,7 @@ def checkout(lang):
 
     domain = [
         ('state', '=', 'draft'),
+        ('shop', '=', SHOP),
         ]
     if session.get('user'): # login user
         domain.append(['OR', 
@@ -522,6 +526,7 @@ def cart_list(lang):
 
     domain = [
         ('state', '=', 'draft'),
+        ('shop', '=', SHOP),
         ]
     if session.get('user'): # login user
         domain.append(['OR', 
