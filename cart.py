@@ -63,7 +63,7 @@ class ShipmentAddressForm(Form):
             return False
         return True
 
-@cart.route('/my-cart', methods=['GET', 'PUT'], endpoint="my-cart")
+@cart.route('/json/my-cart', methods=['GET', 'PUT'], endpoint="my-cart")
 @tryton.transaction()
 def my_cart(lang):
     '''All Carts JSON'''
