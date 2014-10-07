@@ -467,8 +467,8 @@ def checkout(lang):
     payment = int(request.form.get('payment'))
     for p in shop.esale_payments:
         if p.id == payment:
-            values['payment'] = payment
-            values['payment_name'] = p.rec_name
+            values['payment'] = p.payment_type.id
+            values['payment_name'] = p.payment_type.rec_name
 
     # Carrier
     carrier_id = request.form.get('carrier')
