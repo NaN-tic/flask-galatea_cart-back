@@ -240,6 +240,7 @@ def add(lang):
 
     # Convert form values to dict values {'id': 'qty'}
     values = {}
+    codes = []
 
     # json request
     if request.json:
@@ -247,20 +248,46 @@ def add(lang):
             if data.get('name'):
                 product = data.get('name').split('-')
                 try:
-                    values[int(product[1])] = float(data.get('value'))
+                    qty = float(data.get('value'))
                 except:
-                    return False
+                    return jsonify(result=False)
+                try:
+                    values[int(product[1])] = qty
+                except:
+                    values[product[1]] = qty
+                    codes.append(product[1])
+
+        if not values:
+            return jsonify(result=False)
     # post request
     else:
         for k, v in request.form.iteritems():
             product = k.split('-')
             if product[0] == 'product':
                 try:
-                    values[int(product[1])] = float(v)
+                    qty = float(v)
                 except:
                     flash(_('You try to add no numeric quantity. ' \
                         'The request has been stopped.'))
                     return redirect(url_for('.cart', lang=g.language))
+                try:
+                    values[int(product[1])] = qty
+                except:
+                    values[product[1]] = qty
+                    codes.append(product[1])
+
+    # transform product code to id
+    if codes:
+        products = Product.search_read(
+            [('code', 'in', codes)], fields_names=['code'])
+        # reset dict
+        vals = values.copy()
+        values = {}
+        
+        for k, v in vals.items():
+            for product in products:
+                if product['code'] == k:
+                    values[product['id']] = v
 
     # Remove items in cart
     removes = request.form.getlist('remove')
