@@ -228,7 +228,6 @@ def confirm(lang):
 
     return redirect(url_for('sale.sale', lang=g.language, id=sale.id))
 
-
 @cart.route("/add/", methods=["POST"], endpoint="add")
 @tryton.transaction()
 def add(lang):
@@ -283,7 +282,7 @@ def add(lang):
         # reset dict
         vals = values.copy()
         values = {}
-        
+
         for k, v in vals.items():
             for product in products:
                 if product['code'] == k:
