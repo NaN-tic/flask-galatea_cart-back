@@ -15,6 +15,7 @@ SHOP = current_app.config.get('TRYTON_SALE_SHOP')
 SHOPS = current_app.config.get('TRYTON_SALE_SHOPS')
 CART_CROSSSELLS = current_app.config.get('TRYTON_CART_CROSSSELLS', True)
 LIMIT_CROSSELLS = current_app.config.get('TRYTON_CATALOG_LIMIT_CROSSSELLS', 10)
+MINI_CART_CODE = current_app.config.get('TRYTON_CATALOG_MINI_CART_CODE', False)
 
 Cart = tryton.pool.get('sale.cart')
 Template = tryton.pool.get('product.template')
@@ -27,7 +28,7 @@ Sale = tryton.pool.get('sale.sale')
 SaleLine = tryton.pool.get('sale.line')
 
 CART_FIELD_NAMES = [
-    'cart_date', 'product_id', 'template_id', 'quantity',
+    'cart_date', 'product_id', 'template_id', 'quantity', 'product.code',
     'product.rec_name', 'product.template.esale_slug', 'product.template.esale_default_images',
     'unit_price', 'unit_price_w_tax', 'untaxed_amount', 'amount_w_tax',
     ]
@@ -96,7 +97,7 @@ def my_cart(lang):
             image = thumbnail(filename, thumbname, '200x200')
         items.append({
             'id': cart['id'],
-            'name': cart['product.rec_name'],
+            'name': cart['product.code'] if MINI_CART_CODE else cart['product.rec_name'],
             'url': url_for('catalog.product_'+g.language, lang=g.language,
                 slug=cart['product.template.esale_slug']),
             'quantity': cart['quantity'],
