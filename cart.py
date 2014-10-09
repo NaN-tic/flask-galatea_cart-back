@@ -288,6 +288,7 @@ def add(lang):
             for product in products:
                 if product['code'] == k:
                     values[product['id']] = v
+                    break
 
     # Remove items in cart
     removes = request.form.getlist('remove')
