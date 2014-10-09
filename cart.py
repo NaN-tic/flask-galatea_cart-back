@@ -579,17 +579,32 @@ def cart_list(lang):
 
     carriers = []
     if stockable:
-        for c in shop.esale_carriers:
-            carrier = c.carrier
-            carrier_price = carrier.get_sale_price() # return price, currency
-            price = carrier_price[0]
-            price_w_tax = carrier.get_sale_price_w_tax(price)
-            carriers.append({
-                'id': carrier.id,
-                'name': carrier.rec_name,
-                'price': price,
-                'price_w_tax': price_w_tax,
-                })
+        if session.get('customer'):
+            party = Party(session.get('customer'))
+            if hasattr(party, 'carrier'):
+                carrier = party.carrier
+                if carrier:
+                    carrier_price = carrier.get_sale_price() # return price, currency
+                    price = carrier_price[0]
+                    price_w_tax = carrier.get_sale_price_w_tax(price)
+                    carriers.append({
+                        'id': party.carrier.id,
+                        'name': party.carrier.rec_name,
+                        'price': price,
+                        'price_w_tax': price_w_tax,
+                        })
+        if not carriers:
+            for c in shop.esale_carriers:
+                carrier = c.carrier
+                carrier_price = carrier.get_sale_price() # return price, currency
+                price = carrier_price[0]
+                price_w_tax = carrier.get_sale_price_w_tax(price)
+                carriers.append({
+                    'id': carrier.id,
+                    'name': carrier.rec_name,
+                    'price': price,
+                    'price_w_tax': price_w_tax,
+                    })
 
     # Cross Sells
     crossells = []
