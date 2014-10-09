@@ -203,9 +203,10 @@ def confirm(lang):
     if comment:
         values['comment'] = comment
 
-    sales = Cart.create_sale(carts, values)
+    sales, error = Cart.create_sale(carts, values)
+    if error:
+        current_app.logger.error('Sale. Error create sale from party (%s): %s' % (party.id, error))
     if not sales:
-        current_app.logger.error('Sale. Error create sale party %s' % party.id)
         flash(_('It has not been able to convert the cart into an order. ' \
             'Try again or contact us.'), 'danger')
         return redirect(url_for('.cart', lang=g.language))
