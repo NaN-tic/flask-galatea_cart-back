@@ -580,14 +580,13 @@ def cart_list(lang):
     carriers = []
     if stockable:
         for c in shop.esale_carriers:
-            carrier_id = c.id
-            carrier = Carrier(carrier_id)
+            carrier = c.carrier
             carrier_price = carrier.get_sale_price() # return price, currency
             price = carrier_price[0]
             price_w_tax = carrier.get_sale_price_w_tax(price)
             carriers.append({
-                'id': carrier_id,
-                'name': c.rec_name,
+                'id': carrier.id,
+                'name': carrier.rec_name,
                 'price': price,
                 'price_w_tax': price_w_tax,
                 })
