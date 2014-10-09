@@ -250,7 +250,7 @@ def add(lang):
                 try:
                     qty = float(data.get('value'))
                 except:
-                    return jsonify(result=False)
+                    qty = 1
                 try:
                     values[int(product[1])] = qty
                 except:
