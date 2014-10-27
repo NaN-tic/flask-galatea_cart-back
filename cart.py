@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, current_app, g, url_for, \
     flash, redirect, session, request, jsonify
 from galatea.tryton import tryton
 from galatea.utils import thumbnail
+from galatea.helpers import login_required
 from flask.ext.babel import gettext as _, lazy_gettext as __
 from flask.ext.wtf import Form
 from wtforms import TextField, SelectField, IntegerField, validators
@@ -650,3 +651,74 @@ def cart_list(lang):
             carriers=sorted(carriers, key=lambda k: k['price']),
             stockable=stockable,
             )
+
+@cart.route("/pending", endpoint="cart-pending")
+@login_required
+@tryton.transaction()
+def cart_pending(lang):
+    '''Last cart pending'''
+    order = [
+        ('cart_date', 'DESC'),
+        ('id', 'DESC'),
+        ]
+
+    domain = [
+        ('state', 'in', ['draft', 'wait']),
+        ('shop', '=', SHOP),
+            ['OR', 
+                ('party', '=', session['customer']),
+                ('galatea_user', '=', session['user']),
+            ]
+        ]
+    carts = Cart.search_read(
+        domain, offset=0, limit=10, order=order, fields_names=CART_FIELD_NAMES)
+
+    breadcrumbs = [{
+        'slug': url_for('.cart', lang=g.language),
+        'name': _('Cart'),
+        }, {
+        'name': _('Pending'),
+        }]
+
+    return render_template('cart-pending.html',
+        carts=carts,
+        breadcrumbs=breadcrumbs,
+    )
+
+@cart.route("/last-products", endpoint="cart-last-products")
+@login_required
+@tryton.transaction()
+def cart_last_products(lang):
+    '''Last products'''
+    order = [
+        ('cart_date', 'DESC'),
+        ('id', 'DESC'),
+        ]
+
+    domain = [
+        ('state', '=', 'done'),
+            ['OR', 
+                ('party', '=', session['customer']),
+                ('galatea_user', '=', session['user']),
+            ]
+        ]
+    cart_products = Cart.search_read(
+        domain, offset=0, limit=10, order=order, fields_names=CART_FIELD_NAMES)
+    last_product_ids = []
+    last_products = []
+    for cproduct in cart_products:
+        if not cproduct['product_id'] in last_product_ids:
+            last_product_ids.append(cproduct['product_id'])
+            last_products.append(cproduct)
+
+    breadcrumbs = [{
+        'slug': url_for('.cart', lang=g.language),
+        'name': _('Cart'),
+        }, {
+        'name': _('Last Products'),
+        }]
+
+    return render_template('cart-last-products.html',
+        products=last_products,
+        breadcrumbs=breadcrumbs,
+    )
