@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, current_app, g, url_for, \
     flash, redirect, session, request, jsonify
 from galatea.tryton import tryton
+from galatea.csrf import csrf
 from galatea.utils import thumbnail
 from galatea.helpers import login_required
 from flask.ext.babel import gettext as _, lazy_gettext as __
@@ -27,6 +28,8 @@ Party = tryton.pool.get('party.party')
 Address = tryton.pool.get('party.address')
 Sale = tryton.pool.get('sale.sale')
 SaleLine = tryton.pool.get('sale.line')
+Country = tryton.pool.get('country.country')
+Subdivision = tryton.pool.get('country.subdivision')
 
 CART_FIELD_NAMES = [
     'cart_date', 'product_id', 'template_id', 'quantity', 'product.code',
@@ -231,6 +234,7 @@ def confirm(lang):
 
     return redirect(url_for('sale.sale', lang=g.language, id=sale.id))
 
+@csrf.exempt
 @cart.route("/add/", methods=["POST"], endpoint="add")
 @tryton.transaction()
 def add(lang):
@@ -454,10 +458,27 @@ def checkout(lang):
         values['shipment_street'] = request.form.get('shipment_street')
         values['shipment_zip'] = request.form.get('shipment_zip')
         values['shipment_city'] = request.form.get('shipment_city')
-        values['shipment_country'] = request.form.get('shipment_country')
-        values['shipment_subdivision'] = request.form.get('shipment_subdivision')
-        values['shipment_email'] = request.form.get('shipment_email')
         values['shipment_phone'] = request.form.get('shipment_phone')
+
+        if session.get('email'):
+            values['shipment_email'] = session['email']
+        else:
+            shipment_email = request.form.get('shipment_email')
+            if not check_email(shipment_email):
+                errors.append(_('Email not valid.'))
+            values['shipment_email'] = shipment_email
+
+        shipment_country = request.form.get('shipment_country')
+        if shipment_country:
+            values['shipment_country'] = shipment_country
+            country, = Country.browse([shipment_country])
+            values['shipment_country_name'] = country.name
+
+        shipment_subdivision = request.form.get('shipment_subdivision')
+        if shipment_subdivision:
+            values['shipment_subdivision'] = shipment_subdivision
+            subdivision, = Subdivision.browse([shipment_subdivision])
+            values['shipment_subdivision_name'] = subdivision.name
 
         if not values['shipment_name'] or not values['shipment_street'] \
                 or not values['shipment_zip'] or not values['shipment_city'] \
@@ -465,17 +486,18 @@ def checkout(lang):
             errors.append(_('Error when validate Shipment Address. ' \
                 'Please, return to cart and complete Shipment Address'))
 
-        if not check_email(values['shipment_email']):
-            errors.append(_('Email not valid.'))
-
         vat_country = request.form.get('vat_country')
         vat_number = request.form.get('vat_number')
-        values['vat_country'] = vat_country
-        values['vat_number'] = vat_number
 
-        vat_number = '%s%s' % (vat_country.upper(), vat_number)
-        if not vatnumber.check_vat(vat_number):
-            errors.append(_('VAT not valid.'))
+        if vat_number:
+            values['vat_number'] = vat_number
+            if vat_country:
+                values['vat_country'] = vat_country
+
+        if vat_country and vat_number:
+            vat_number = '%s%s' % (vat_country.upper(), vat_number)
+            if not vatnumber.check_vat(vat_number):
+                errors.append(_('VAT not valid.'))
 
     elif session.get('customer'):
         addresses = Address.search([
