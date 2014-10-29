@@ -4,7 +4,7 @@ from galatea.tryton import tryton
 from galatea.csrf import csrf
 from galatea.utils import thumbnail
 from galatea.helpers import login_required
-from flask.ext.babel import gettext as _, lazy_gettext as __
+from flask.ext.babel import gettext as _, lazy_gettext
 from flask.ext.wtf import Form
 from wtforms import TextField, SelectField, IntegerField, validators
 from decimal import Decimal
@@ -48,16 +48,16 @@ for country in vatnumber.countries():
 
 class ShipmentAddressForm(Form):
     "Shipment Address form"
-    shipment_name = TextField(__('Name'), [validators.Required()])
-    shipment_street = TextField(__('Street'), [validators.Required()])
-    shipment_city = TextField(__('City'), [validators.Required()])
-    shipment_zip = TextField(__('Zip'), [validators.Required()])
-    shipment_country = SelectField(__('Country'), [validators.Required(), ], coerce=int)
-    shipment_subdivision = IntegerField(__('Subdivision'), [validators.Required()])
-    shipment_email = TextField(__('Email'), [validators.Required(), validators.Email()])
-    shipment_phone = TextField(__('Phone'))
-    vat_country = SelectField(__('VAT Country'), [validators.Required(), ])
-    vat_number = TextField(__('VAT Number'), [validators.Required()])
+    shipment_name = TextField(lazy_gettext('Name'), [validators.Required()])
+    shipment_street = TextField(lazy_gettext('Street'), [validators.Required()])
+    shipment_city = TextField(lazy_gettext('City'), [validators.Required()])
+    shipment_zip = TextField(lazy_gettext('Zip'), [validators.Required()])
+    shipment_country = SelectField(lazy_gettext('Country'), [validators.Required(), ], coerce=int)
+    shipment_subdivision = IntegerField(lazy_gettext('Subdivision'), [validators.Required()])
+    shipment_email = TextField(lazy_gettext('Email'), [validators.Required(), validators.Email()])
+    shipment_phone = TextField(lazy_gettext('Phone'))
+    vat_country = SelectField(lazy_gettext('VAT Country'), [validators.Required(), ])
+    vat_number = TextField(lazy_gettext('VAT Number'), [validators.Required()])
 
     def __init__(self, *args, **kwargs):
         Form.__init__(self, *args, **kwargs)
