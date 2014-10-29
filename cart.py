@@ -54,7 +54,7 @@ class ShipmentAddressForm(Form):
     shipment_zip = TextField(lazy_gettext('Zip'), [validators.Required()])
     shipment_country = SelectField(lazy_gettext('Country'), [validators.Required(), ], coerce=int)
     shipment_subdivision = IntegerField(lazy_gettext('Subdivision'), [validators.Required()])
-    shipment_email = TextField(lazy_gettext('Email'), [validators.Required(), validators.Email()])
+    shipment_email = TextField(lazy_gettext('E-mail'), [validators.Required(), validators.Email()])
     shipment_phone = TextField(lazy_gettext('Phone'))
     vat_country = SelectField(lazy_gettext('VAT Country'), [validators.Required(), ])
     vat_number = TextField(lazy_gettext('VAT Number'), [validators.Required()])
