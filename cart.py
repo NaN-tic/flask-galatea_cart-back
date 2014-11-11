@@ -636,11 +636,11 @@ def cart_list(lang):
         template_ids = []
         for cproduct in carts:
             template_ids.append(cproduct['template_id'])
-        CATALOG_TEMPLATE_FIELD_NAMES.append('esale_crosssells')
+        CATALOG_TEMPLATE_FIELD_NAMES.append('esale_crosssells_by_shop')
         templates = Template.read(template_ids, CATALOG_TEMPLATE_FIELD_NAMES)
         crossells_ids = []
         for template in templates:
-            for crossell in template['esale_crosssells']:
+            for crossell in template['esale_crosssells_by_shop']:
                 if not crossell in crossells_ids and len(crossells_ids) < LIMIT_CROSSELLS:
                     crossells_ids.append(crossell)
         if crossells_ids:
