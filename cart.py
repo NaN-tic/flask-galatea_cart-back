@@ -448,6 +448,14 @@ def checkout(lang):
         flash(_('There are not products in your cart.'), 'danger')
         return redirect(url_for('.cart', lang=g.language))
 
+    untaxed_amount = Decimal(0)
+    tax_amount = Decimal(0)
+    total_amount = Decimal(0)
+    for cart in carts:
+        untaxed_amount += cart['untaxed_amount']
+        tax_amount += cart['amount_w_tax'] - cart['untaxed_amount']
+        total_amount += cart['amount_w_tax']
+
     # Shipment Address
     #~ form_shipment_address = ShipmentAddressForm()
     shipment_address = request.form.get('shipment_address')
@@ -527,8 +535,19 @@ def checkout(lang):
     # Carrier
     carrier_id = request.form.get('carrier')
     if carrier_id:
+        # create a virtual sale
+        sale = Sale()
+        sale.untaxed_amount = untaxed_amount
+        sale.tax_amount = tax_amount
+        sale.total_amount = total_amount
+
+        context = {}
+        context['record'] = sale # Eval by "carrier formula" require "record"
+
         carrier = Carrier(carrier_id)
-        carrier_price = carrier.get_sale_price() # return price, currency
+        context['carrier'] = carrier
+        with Transaction().set_context(context):
+            carrier_price = carrier.get_sale_price() # return price, currency
         price = carrier_price[0]
         price_w_tax = carrier.get_sale_price_w_tax(price)
         values['carrier'] = carrier
