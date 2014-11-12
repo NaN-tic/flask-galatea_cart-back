@@ -7,6 +7,7 @@ from galatea.helpers import login_required
 from flask.ext.babel import gettext as _, lazy_gettext
 from flask.ext.wtf import Form
 from wtforms import TextField, SelectField, IntegerField, validators
+from trytond.transaction import Transaction
 from decimal import Decimal
 from copy import copy
 from emailvalid import check_email
@@ -591,7 +592,16 @@ def cart_list(lang):
             ('sid', '=', session.sid),
             )
     carts = Cart.search_read(domain, order=CART_ORDER, fields_names=CART_FIELD_NAMES)
-    products = [cart['product_id'] for cart in carts]
+
+    products = []
+    untaxed_amount = Decimal(0)
+    tax_amount = Decimal(0)
+    total_amount = Decimal(0)
+    for cart in carts:
+        products.append(cart['product_id'])
+        untaxed_amount += cart['untaxed_amount']
+        tax_amount += cart['amount_w_tax'] - cart['untaxed_amount']
+        total_amount += cart['amount_w_tax']
 
     addresses = None
     if session.get('customer'):
@@ -604,12 +614,23 @@ def cart_list(lang):
 
     carriers = []
     if stockable:
+        # create a virtual sale
+        sale = Sale()
+        sale.untaxed_amount = untaxed_amount
+        sale.tax_amount = tax_amount
+        sale.total_amount = total_amount
+
+        context = {}
+        context['record'] = sale # Eval by "carrier formula" require "record"
+
         if session.get('customer'):
             party = Party(session.get('customer'))
             if hasattr(party, 'carrier'):
                 carrier = party.carrier
                 if carrier:
-                    carrier_price = carrier.get_sale_price() # return price, currency
+                    context['carrier'] = carrier
+                    with Transaction().set_context(context):
+                        carrier_price = carrier.get_sale_price() # return price, currency
                     price = carrier_price[0]
                     price_w_tax = carrier.get_sale_price_w_tax(price)
                     carriers.append({
@@ -621,7 +642,9 @@ def cart_list(lang):
         if not carriers:
             for c in shop.esale_carriers:
                 carrier = c.carrier
-                carrier_price = carrier.get_sale_price() # return price, currency
+                context['carrier'] = carrier
+                with Transaction().set_context(context):
+                    carrier_price = carrier.get_sale_price() # return price, currency
                 price = carrier_price[0]
                 price_w_tax = carrier.get_sale_price_w_tax(price)
                 carriers.append({
