@@ -573,6 +573,11 @@ def checkout(lang):
             carts=carts,
             values=values,
             errors=errors,
+            prices={
+                'untaxed_amount': untaxed_amount,
+                'tax_amount': tax_amount,
+                'total_amount': total_amount,
+                },
             )
 
 @cart.route("/", endpoint="cart")
@@ -700,7 +705,7 @@ def cart_list(lang):
                 'untaxed_amount': untaxed_amount,
                 'tax_amount': tax_amount,
                 'total_amount': total_amount,
-                }
+                },
             )
 
 @cart.route("/pending", endpoint="cart-pending")
