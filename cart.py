@@ -8,6 +8,7 @@ from flask.ext.babel import gettext as _, lazy_gettext
 from flask.ext.wtf import Form
 from wtforms import TextField, SelectField, IntegerField, validators
 from decimal import Decimal
+from copy import copy
 from emailvalid import check_email
 import vatnumber
 
@@ -636,8 +637,9 @@ def cart_list(lang):
         template_ids = []
         for cproduct in carts:
             template_ids.append(cproduct['template_id'])
-        CATALOG_TEMPLATE_FIELD_NAMES.append('esale_crosssells_by_shop')
-        templates = Template.read(template_ids, CATALOG_TEMPLATE_FIELD_NAMES)
+        template_fields = copy(CATALOG_TEMPLATE_FIELD_NAMES)
+        template_fields.append('esale_crosssells_by_shop')
+        templates = Template.read(template_ids, template_fields)
         crossells_ids = []
         for template in templates:
             for crossell in template['esale_crosssells_by_shop']:
