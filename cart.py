@@ -562,22 +562,13 @@ def checkout(lang):
     breadcrumbs = [{
         'slug': url_for('.cart', lang=g.language),
         'name': _('Cart'),
-        }]
-
-    # Breadcumbs Cart
-    bcarts = [{
+        }, {
         'slug': url_for('.cart', lang=g.language),
-        'name': _('Cart'),
-        }, {
-        'slug': url_for('.checkout', lang=g.language),
         'name': _('Checkout'),
-        }, {
-        'name': _('Order'),
         }]
 
     return render_template('checkout.html',
             breadcrumbs=breadcrumbs,
-            bcarts=bcarts,
             shop=shop,
             carts=carts,
             values=values,
