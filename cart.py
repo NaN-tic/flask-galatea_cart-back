@@ -686,6 +686,11 @@ def cart_list(lang):
             crossells=crossells,
             carriers=sorted(carriers, key=lambda k: k['price']),
             stockable=stockable,
+            prices={
+                'untaxed_amount': untaxed_amount,
+                'tax_amount': tax_amount,
+                'total_amount': total_amount,
+                }
             )
 
 @cart.route("/pending", endpoint="cart-pending")
