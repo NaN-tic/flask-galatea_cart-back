@@ -677,19 +677,8 @@ def cart_list(lang):
         'name': _('Cart'),
         }]
 
-    # Breadcumbs Cart
-    bcarts = [{
-        'slug': url_for('.cart', lang=g.language),
-        'name': _('Cart'),
-        }, {
-        'name': _('Checkout'),
-        }, {
-        'name': _('Order'),
-        }]
-
     return render_template('cart.html',
             breadcrumbs=breadcrumbs,
-            bcarts=bcarts,
             shop=shop,
             carts=carts,
             form_shipment_address=form_shipment_address,
