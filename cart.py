@@ -254,24 +254,24 @@ def add(lang):
     if request.json:
         for data in request.json:
             if data.get('name'):
-                product = data.get('name').split('-')
+                prod = data.get('name').split('-')
                 try:
                     qty = float(data.get('value'))
                 except:
                     qty = 1
                 try:
-                    values[int(product[1])] = qty
+                    values[int(prod[1])] = qty
                 except:
-                    values[product[1]] = qty
-                    codes.append(product[1])
+                    values[prod[1]] = qty
+                    codes.append(prod[1])
 
         if not values:
             return jsonify(result=False)
     # post request
     else:
         for k, v in request.form.iteritems():
-            product = k.split('-')
-            if product[0] == 'product':
+            prod = k.split('-')
+            if prod[0] == 'product':
                 try:
                     qty = float(v)
                 except:
@@ -279,10 +279,10 @@ def add(lang):
                         'The request has been stopped.'))
                     return redirect(url_for('.cart', lang=g.language))
                 try:
-                    values[int(product[1])] = qty
+                    values[int(prod[1])] = qty
                 except:
-                    values[product[1]] = qty
-                    codes.append(product[1])
+                    values[prod[1]] = qty
+                    codes.append(prod[1])
 
     # transform product code to id
     if codes:
@@ -293,9 +293,9 @@ def add(lang):
         values = {}
 
         for k, v in vals.items():
-            for product in products:
-                if product['code'] == k:
-                    values[product['id']] = v
+            for prod in products:
+                if prod['code'] == k:
+                    values[prod['id']] = v
                     break
 
     # Remove items in cart
@@ -347,12 +347,13 @@ def add(lang):
 
     # Add/Update products data
     for product_id, qty in values.iteritems():
+        product = None
         for p in products:
             if p.id == product_id:
                 product = p
                 break
 
-        if not product.add_cart:
+        if not product or not product.add_cart:
             continue
 
         cart = Cart()
