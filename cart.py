@@ -528,24 +528,28 @@ def checkout(lang):
 
     # Payment
     payment = int(request.form.get('payment'))
+    payment_type = None
     for p in shop.esale_payments:
         if p.id == payment:
             values['payment'] = p.payment_type.id
             values['payment_name'] = p.payment_type.rec_name
+            payment_type = p.payment_type
 
     # Carrier
     carrier_id = request.form.get('carrier')
     if carrier_id:
+        carrier = Carrier(carrier_id)
+
         # create a virtual sale
         sale = Sale()
         sale.untaxed_amount = untaxed_amount
         sale.tax_amount = tax_amount
         sale.total_amount = total_amount
+        sale.carrier = carrier
+        sale.payment_type = payment_type
 
         context = {}
         context['record'] = sale # Eval by "carrier formula" require "record"
-
-        carrier = Carrier(carrier_id)
         context['carrier'] = carrier
         with Transaction().set_context(context):
             carrier_price = carrier.get_sale_price() # return price, currency
@@ -619,12 +623,19 @@ def cart_list(lang):
         tax_amount += cart['amount_w_tax'] - cart['untaxed_amount']
         total_amount += cart['amount_w_tax']
 
+    party = None
     addresses = None
     if session.get('customer'):
+        party = Party(session.get('customer'))
         addresses = Address.search([
             ('party', '=', session['customer']),
             ('active', '=', True),
             ], order=[('sequence', 'ASC'), ('id', 'ASC')])
+
+    # Default payment - carrier payment type
+    default_payment = None
+    if shop.esale_payments:
+        default_payment = shop.esale_payments[0].payment_type
 
     stockable = Carrier.get_products_stockable(products)
 
@@ -635,14 +646,15 @@ def cart_list(lang):
         sale.untaxed_amount = untaxed_amount
         sale.tax_amount = tax_amount
         sale.total_amount = total_amount
+        sale.payment_type = default_payment
 
         context = {}
         context['record'] = sale # Eval by "carrier formula" require "record"
 
-        if session.get('customer'):
-            party = Party(session.get('customer'))
+        if party:
             if hasattr(party, 'carrier'):
                 carrier = party.carrier
+                sale.carrier = carrier
                 if carrier:
                     context['carrier'] = carrier
                     with Transaction().set_context(context):
@@ -658,6 +670,7 @@ def cart_list(lang):
         if not carriers:
             for c in shop.esale_carriers:
                 carrier = c.carrier
+                sale.carrier = carrier
                 context['carrier'] = carrier
                 with Transaction().set_context(context):
                     carrier_price = carrier.get_sale_price() # return price, currency
