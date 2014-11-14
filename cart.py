@@ -624,13 +624,17 @@ def cart_list(lang):
         total_amount += cart['amount_w_tax']
 
     party = None
-    addresses = None
+    addresses = []
+    delivery_addresses = []
+    invoice_addresses = []
     if session.get('customer'):
         party = Party(session.get('customer'))
-        addresses = Address.search([
-            ('party', '=', session['customer']),
-            ('active', '=', True),
-            ], order=[('sequence', 'ASC'), ('id', 'ASC')])
+        for address in party.addresses:
+            addresses.append(address)
+            if address.delivery:
+                delivery_addresses.append(address)
+            if address.invoice:
+                invoice_addresses.append(address)
 
     # Default payment - carrier payment type
     default_payment = None
@@ -712,6 +716,8 @@ def cart_list(lang):
             carts=carts,
             form_shipment_address=form_shipment_address,
             addresses=addresses,
+            delivery_addresses=delivery_addresses,
+            invoice_addresses=invoice_addresses,
             crossells=crossells,
             carriers=sorted(carriers, key=lambda k: k['price']),
             stockable=stockable,
