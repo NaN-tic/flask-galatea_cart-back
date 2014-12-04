@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, current_app, g, url_for, \
+from flask import Blueprint, render_template, current_app, abort, g, url_for, \
     flash, redirect, session, request, jsonify
 from galatea.tryton import tryton
 from galatea.csrf import csrf
@@ -15,12 +15,14 @@ import vatnumber
 
 cart = Blueprint('cart', __name__, template_folder='templates')
 
+GALATEA_WEBSITE = current_app.config.get('TRYTON_GALATEA_SITE')
 SHOP = current_app.config.get('TRYTON_SALE_SHOP')
 SHOPS = current_app.config.get('TRYTON_SALE_SHOPS')
 CART_CROSSSELLS = current_app.config.get('TRYTON_CART_CROSSSELLS', True)
 LIMIT_CROSSELLS = current_app.config.get('TRYTON_CATALOG_LIMIT_CROSSSELLS', 10)
 MINI_CART_CODE = current_app.config.get('TRYTON_CATALOG_MINI_CART_CODE', False)
 
+Website = tryton.pool.get('galatea.website')
 Cart = tryton.pool.get('sale.cart')
 Template = tryton.pool.get('product.template')
 Product = tryton.pool.get('product.product')
@@ -427,6 +429,13 @@ def add(lang):
 @tryton.transaction()
 def checkout(lang):
     '''Checkout user or session'''
+    websites = Website.search([
+        ('id', '=', GALATEA_WEBSITE),
+        ], limit=1)
+    if not websites:
+        abort(404)
+    website, = websites
+
     values = {}
     errors = []
     shop = Shop(SHOP)
@@ -573,6 +582,7 @@ def checkout(lang):
         }]
 
     return render_template('checkout.html',
+            website=website,
             breadcrumbs=breadcrumbs,
             shop=shop,
             carts=carts,
@@ -589,6 +599,13 @@ def checkout(lang):
 @tryton.transaction()
 def cart_list(lang):
     '''Cart by user or session'''
+    websites = Website.search([
+        ('id', '=', GALATEA_WEBSITE),
+        ], limit=1)
+    if not websites:
+        abort(404)
+    website, = websites
+
     shop = Shop(SHOP)
 
     form_shipment_address = ShipmentAddressForm(
@@ -711,6 +728,7 @@ def cart_list(lang):
         }]
 
     return render_template('cart.html',
+            website=website,
             breadcrumbs=breadcrumbs,
             shop=shop,
             carts=carts,
