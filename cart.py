@@ -21,6 +21,7 @@ SHOPS = current_app.config.get('TRYTON_SALE_SHOPS')
 CART_CROSSSELLS = current_app.config.get('TRYTON_CART_CROSSSELLS', True)
 LIMIT_CROSSELLS = current_app.config.get('TRYTON_CATALOG_LIMIT_CROSSSELLS', 10)
 MINI_CART_CODE = current_app.config.get('TRYTON_CATALOG_MINI_CART_CODE', False)
+STOCK_CART = current_app.config.get('TRYTON_CATALOG_STOCK_CART', False)
 
 Website = tryton.pool.get('galatea.website')
 Cart = tryton.pool.get('sale.cart')
@@ -357,6 +358,12 @@ def add(lang):
 
         if not product or not product.add_cart:
             continue
+
+        # Add cart if have stock
+        if STOCK_CART:
+            if not product.quantity > 0:
+                flash(_('Product "%s" not have stock.' % product.rec_name))
+                continue
 
         cart = Cart()
         cart.party = session.get('customer', None)
