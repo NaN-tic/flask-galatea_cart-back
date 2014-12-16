@@ -36,6 +36,7 @@ SaleLine = tryton.pool.get('sale.line')
 Country = tryton.pool.get('country.country')
 Subdivision = tryton.pool.get('country.subdivision')
 
+PRODUCT_TYPE_STOCK = ['goods', 'assets']
 CART_FIELD_NAMES = [
     'cart_date', 'product_id', 'template_id', 'quantity', 'product.code',
     'product.rec_name', 'product.template.esale_slug', 'product.template.esale_default_images',
@@ -361,7 +362,7 @@ def add(lang):
 
         # Add cart if have stock
         if STOCK_CART:
-            if not product.quantity > 0:
+            if not product.quantity > 0 and product.type in PRODUCT_TYPE_STOCK:
                 flash(_('Product "%s" not have stock.' % product.rec_name))
                 continue
 
