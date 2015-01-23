@@ -474,6 +474,10 @@ def checkout(lang):
         tax_amount += cart['amount_w_tax'] - cart['untaxed_amount']
         total_amount += cart['amount_w_tax']
 
+    party = None
+    if session.get('customer'):
+        party = Party(session.get('customer'))
+
     # Shipment Address
     #~ form_shipment_address = ShipmentAddressForm()
     shipment_address = request.form.get('shipment_address')
@@ -526,10 +530,9 @@ def checkout(lang):
             vat_number = '%s%s' % (vat_country.upper(), vat_number)
             if not vatnumber.check_vat(vat_number):
                 errors.append(_('VAT not valid.'))
-
-    elif session.get('customer'):
+    elif party:
         addresses = Address.search([
-            ('party', '=', session['customer']),
+            ('party', '=', party),
             ('id', '=', int(shipment_address)),
             ('active', '=', True),
             ], order=[('sequence', 'ASC'), ('id', 'ASC')])
@@ -546,11 +549,19 @@ def checkout(lang):
     # Payment
     payment = int(request.form.get('payment'))
     payment_type = None
-    for p in shop.esale_payments:
-        if p.id == payment:
-            values['payment'] = p.payment_type.id
-            values['payment_name'] = p.payment_type.rec_name
-            payment_type = p.payment_type
+    if party and hasattr(party, 'customer_payment_type'):
+        if party.customer_payment_type:
+            payment_type = party.customer_payment_type
+            values['payment'] = payment_type.id
+            values['payment_name'] = payment_type.rec_name
+    if not payment_type:
+        for p in shop.esale_payments:
+            if p.payment_type.id == payment:
+                payment_type = p.payment_type
+                values['payment'] = payment_type.id
+                values['payment_name'] = payment_type.rec_name
+                break
+    print values
 
     # Carrier
     carrier_id = request.form.get('carrier')
@@ -661,13 +672,20 @@ def cart_list(lang):
             if address.invoice:
                 invoice_addresses.append(address)
 
-    # Default payment - carrier payment type
+    # Get payments. Shop payments or Party payment
+    payments = []
     default_payment = None
     if shop.esale_payments:
         default_payment = shop.esale_payments[0].payment_type
+        if party:
+            if hasattr(party, 'customer_payment_type'):
+                if party.customer_payment_type:
+                    payments = [party.customer_payment_type]
+        if not payments:
+            payments = [payment.payment_type for payment in shop.esale_payments]
 
+    # Get carriers. Shop carriers or Party carrier
     stockable = Carrier.get_products_stockable(products)
-
     carriers = []
     if stockable:
         # create a virtual sale
@@ -745,6 +763,7 @@ def cart_list(lang):
             delivery_addresses=delivery_addresses,
             invoice_addresses=invoice_addresses,
             crossells=crossells,
+            payments=payments,
             carriers=sorted(carriers, key=lambda k: k['price']),
             stockable=stockable,
             prices={
