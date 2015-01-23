@@ -538,7 +538,7 @@ def checkout(lang):
             ], order=[('sequence', 'ASC'), ('id', 'ASC')])
         if addresses:
             address, = addresses
-            values['shipment_address_name'] = address.rec_name
+            values['shipment_address_name'] = address.full_address
         else:
             errors.append(_('We can found address related yours address. ' \
                 'Please, select a new address in Shipment Address'))
