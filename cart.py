@@ -21,7 +21,6 @@ SHOPS = current_app.config.get('TRYTON_SALE_SHOPS')
 CART_CROSSSELLS = current_app.config.get('TRYTON_CART_CROSSSELLS', True)
 LIMIT_CROSSELLS = current_app.config.get('TRYTON_CATALOG_LIMIT_CROSSSELLS', 10)
 MINI_CART_CODE = current_app.config.get('TRYTON_CATALOG_MINI_CART_CODE', False)
-STOCK_CART = current_app.config.get('TRYTON_CATALOG_STOCK_CART', False)
 
 Website = tryton.pool.get('galatea.website')
 Cart = tryton.pool.get('sale.cart')
@@ -245,6 +244,13 @@ def confirm(lang):
 @tryton.transaction()
 def add(lang):
     '''Add product item cart'''
+    websites = Website.search([
+        ('id', '=', GALATEA_WEBSITE),
+        ], limit=1)
+    if not websites:
+        abort(404)
+    website, = websites
+
     to_create = []
     to_update = []
     to_remove = []
@@ -361,8 +367,12 @@ def add(lang):
             continue
 
         # Add cart if have stock
-        if STOCK_CART:
-            if not product.quantity > 0 and product.type in PRODUCT_TYPE_STOCK:
+        if website.esale_stock:
+            if website.esale_stock_qty == 'forecast_quantity':
+                quantity = product.esale_forecast_quantity
+            else:
+                quantity = product.esale_quantity
+            if not quantity > 0 and product.type in PRODUCT_TYPE_STOCK:
                 flash(_('Product "%s" not have stock.' % product.rec_name))
                 continue
 
