@@ -574,7 +574,6 @@ def checkout(lang):
                 values['payment'] = payment_type.id
                 values['payment_name'] = payment_type.rec_name
                 break
-    print values
 
     # Carrier
     carrier_id = request.form.get('carrier')
