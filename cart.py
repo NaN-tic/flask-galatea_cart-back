@@ -375,7 +375,7 @@ def add(lang):
                 quantity = product.esale_forecast_quantity
             else:
                 quantity = product.esale_quantity
-            if not quantity > 0 and product.type in PRODUCT_TYPE_STOCK:
+            if product.type in PRODUCT_TYPE_STOCK and not (quantity > 0 and qty <= quantity): 
                 flash(_('Product "%s" not have stock.' % product.rec_name))
                 continue
 
