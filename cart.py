@@ -230,7 +230,10 @@ def confirm(lang):
         shipment_line.save()
 
     # sale draft to quotation
-    Sale.quote([sale])
+    try:
+        Sale.quote([sale])
+    except Exception as e:
+        current_app.logger.info(e)
 
     if current_app.debug:
         current_app.logger.info('Sale. Create sale %s' % sale.id)
