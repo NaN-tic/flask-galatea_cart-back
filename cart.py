@@ -375,11 +375,9 @@ def add(lang):
                 quantity = product.esale_forecast_quantity
             else:
                 quantity = product.esale_quantity
-            if product.type in PRODUCT_TYPE_STOCK and not (quantity > 0 and qty <= quantity): 
-                flash(_('Not enought stock for the product "%s" (maximun: %s units).' % (
-                    product.rec_name,
-                    quantity,
-                    )), 'danger')
+            if product.type in PRODUCT_TYPE_STOCK and not (quantity > 0 and qty <= quantity):
+                flash(_('Not enought stock for the product "{product}" (maximun: {quantity} units).').format(
+                    product=product.rec_name, quantity=quantity), 'danger')
                 continue
 
         cart = Cart()
@@ -497,11 +495,9 @@ def checkout(lang):
                 quantity = cart.product.esale_forecast_quantity
             else:
                 quantity = cart.product.esale_quantity
-            if not (cart.quantity > 0 and cart.quantity <= quantity): 
-                flash(_('Not enought stock for the product "%s" (maximun: %s units).' % (
-                    cart.product.rec_name,
-                    quantity,
-                    )), 'danger')
+            if not (cart.quantity > 0 and cart.quantity <= quantity):
+                flash(_('Not enought stock for the product "{product}" (maximun: {quantity} units).').format(
+                    product=cart.product.rec_name, quantity=quantity), 'danger')
                 return redirect(url_for('.cart', lang=g.language))
 
     party = None
