@@ -442,8 +442,20 @@ def add(lang):
             total=len(to_remove)), 'success')
 
     if request.json:
+        # Add JSON messages (success, warning)
+        success = []
+        warning = []
+        for f in session.get('_flashes'):
+            if f[0] == 'success':
+                success.append(f[1])
+            else:
+                warning.append(f[1])
+        messages = {}
+        messages['success'] = ",".join(success)
+        messages['warning'] = ",".join(warning)
+
         session.pop('_flashes', None)
-        return jsonify(result=True)
+        return jsonify(result=True, messages=messages)
     else:
         return redirect(url_for('.cart', lang=g.language))
 
