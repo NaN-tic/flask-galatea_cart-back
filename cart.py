@@ -4,7 +4,7 @@ from galatea.tryton import tryton
 from galatea.csrf import csrf
 from galatea.utils import thumbnail
 from galatea.helpers import login_required
-from flask.ext.babel import gettext as _, lazy_gettext
+from flask.ext.babel import gettext as _, lazy_gettext, ngettext
 from flask.ext.wtf import Form
 from wtforms import TextField, SelectField, IntegerField, validators
 from trytond.transaction import Transaction
@@ -238,7 +238,7 @@ def confirm(lang):
     if current_app.debug:
         current_app.logger.info('Sale. Create sale %s' % sale.id)
 
-    flash(_('Sale order created successfully.'), 'success')
+    flash(_('Successfully created  Sale Order.'), 'success')
 
     return redirect(url_for('sale.sale', lang=g.language, id=sale.id))
 
@@ -422,8 +422,10 @@ def add(lang):
     # Add Cart
     if to_create:
         Cart.create(to_create)
-        flash(_('{total} product/s have been added in your cart.').format(
-            total=len(to_create)), 'success')
+        flash(ngettext(
+            '%(num)s product has been added in your cart.',
+            '%(num)s products have been added in your cart.',
+            len(to_create)), 'success')
 
     # Update Cart
     if to_update:
@@ -432,14 +434,18 @@ def add(lang):
         total = len(to_update)
         if to_remove:
             total = total-len(to_remove)
-        flash(_('{total} product/s have been updated in your cart.').format(
-            total=total), 'success')
+        flash(ngettext(
+            '%(num)s product has been updated in your cart.',
+            '%(num)s products have been updated in your cart.',
+            len(to_update)), 'success')
 
     # Delete Cart
     if to_remove:
         Cart.delete(to_remove)
-        flash(_('{total} product/s have been deleted in your cart.').format(
-            total=len(to_remove)), 'success')
+        flash(ngettext(
+            '%(num)s product has been deleted in your cart.',
+            '%(num)s products have been deleted in your cart.',
+            len(to_remove)), 'success')
 
     if request.json:
         # Add JSON messages (success, warning)
