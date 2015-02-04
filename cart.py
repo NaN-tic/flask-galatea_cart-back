@@ -376,7 +376,10 @@ def add(lang):
             else:
                 quantity = product.esale_quantity
             if product.type in PRODUCT_TYPE_STOCK and not (quantity > 0 and qty <= quantity): 
-                flash(_('Product "%s" not have stock.' % product.rec_name))
+                flash(_('Not enought stock for the product "%s" (maximun: %s units).' % (
+                    product.rec_name,
+                    quantity,
+                    )), 'danger')
                 continue
 
         cart = Cart()
@@ -474,7 +477,7 @@ def checkout(lang):
         domain.append(
             ('sid', '=', session.sid),
             )
-    carts = Cart.search_read(domain, order=CART_ORDER, fields_names=CART_FIELD_NAMES)
+    carts = Cart.search(domain, order=CART_ORDER)
     if not carts:
         flash(_('There are not products in your cart.'), 'danger')
         return redirect(url_for('.cart', lang=g.language))
@@ -483,9 +486,23 @@ def checkout(lang):
     tax_amount = Decimal(0)
     total_amount = Decimal(0)
     for cart in carts:
-        untaxed_amount += cart['untaxed_amount']
-        tax_amount += cart['amount_w_tax'] - cart['untaxed_amount']
-        total_amount += cart['amount_w_tax']
+        untaxed_amount += cart.untaxed_amount
+        tax_amount += cart.amount_w_tax - cart.untaxed_amount
+        total_amount += cart.amount_w_tax
+        # checkout stock available
+        if website.esale_stock:
+            if cart.product.type not in PRODUCT_TYPE_STOCK:
+                continue
+            if website.esale_stock_qty == 'forecast_quantity':
+                quantity = cart.product.esale_forecast_quantity
+            else:
+                quantity = cart.product.esale_quantity
+            if not (cart.quantity > 0 and cart.quantity <= quantity): 
+                flash(_('Not enought stock for the product "%s" (maximun: %s units).' % (
+                    cart.product.rec_name,
+                    quantity,
+                    )), 'danger')
+                return redirect(url_for('.cart', lang=g.language))
 
     party = None
     if session.get('customer'):
