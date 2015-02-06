@@ -451,7 +451,7 @@ def add(lang):
         # Add JSON messages (success, warning)
         success = []
         warning = []
-        for f in session.get('_flashes'):
+        for f in session.get('_flashes', []):
             if f[0] == 'success':
                 success.append(f[1])
             else:
