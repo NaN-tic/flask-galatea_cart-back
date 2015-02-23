@@ -36,16 +36,10 @@ Country = tryton.pool.get('country.country')
 Subdivision = tryton.pool.get('country.subdivision')
 
 PRODUCT_TYPE_STOCK = ['goods', 'assets']
-CART_FIELD_NAMES = [
-    'cart_date', 'product_id', 'template_id', 'quantity', 'product.code',
-    'product.rec_name', 'product.template.esale_slug', 'product.template.esale_default_images',
-    'unit_price', 'unit_price_w_tax', 'untaxed_amount', 'amount_w_tax',
-    ]
 CART_ORDER = [
     ('cart_date', 'DESC'),
     ('id', 'DESC'),
     ]
-from catalog.catalog import CATALOG_TEMPLATE_FIELD_NAMES
 
 VAT_COUNTRIES = [('', '')]
 for country in vatnumber.countries():
@@ -94,26 +88,26 @@ def my_cart(lang):
             ('sid', '=', session.sid),
             )
 
-    carts = Cart.search_read(domain, order=CART_ORDER, fields_names=CART_FIELD_NAMES)
+    carts = Cart.search(domain, order=CART_ORDER)
 
     decimals = "%0."+str(shop.esale_currency.digits)+"f" # "%0.2f" euro
     for cart in carts:
-        img = cart['product.template.esale_default_images']
+        img = cart.product.template.esale_default_images
         image = current_app.config.get('BASE_IMAGE')
         if img.get('small'):
             thumbname = img['small']['name']
             filename = img['small']['digest']
             image = thumbnail(filename, thumbname, '200x200')
         items.append({
-            'id': cart['id'],
-            'name': cart['product.code'] if MINI_CART_CODE else cart['product.rec_name'],
+            'id': cart.id,
+            'name': cart.product.code if MINI_CART_CODE else cart.product.rec_name,
             'url': url_for('catalog.product_'+g.language, lang=g.language,
-                slug=cart['product.template.esale_slug']),
-            'quantity': cart['quantity'],
-            'unit_price': float(Decimal(decimals % cart['unit_price'])),
-            'unit_price_w_tax': float(Decimal(decimals % cart['unit_price_w_tax'])),
-            'untaxed_amount': float(Decimal(decimals % cart['untaxed_amount'])),
-            'amount_w_tax': float(Decimal(decimals % cart['amount_w_tax'])),
+                slug=cart.product.template.esale_slug),
+            'quantity': cart.quantity,
+            'unit_price': float(Decimal(decimals % cart.unit_price)),
+            'unit_price_w_tax': float(Decimal(decimals % cart.unit_price_w_tax)),
+            'untaxed_amount': float(Decimal(decimals % cart.untaxed_amount)),
+            'amount_w_tax': float(Decimal(decimals % cart.amount_w_tax)),
             'image': image,
             })
 
@@ -299,15 +293,14 @@ def add(lang):
 
     # transform product code to id
     if codes:
-        products = Product.search_read(
-            [('code', 'in', codes)], fields_names=['code'])
+        products = Product.search([('code', 'in', codes)])
         # reset dict
         vals = values.copy()
         values = {}
 
         for k, v in vals.items():
             for prod in products:
-                if prod['code'] == k:
+                if prod.code == k:
                     values[prod['id']] = v
                     break
 
@@ -690,17 +683,17 @@ def cart_list(lang):
         domain.append(
             ('sid', '=', session.sid),
             )
-    carts = Cart.search_read(domain, order=CART_ORDER, fields_names=CART_FIELD_NAMES)
+    carts = Cart.search(domain, order=CART_ORDER)
 
     products = []
     untaxed_amount = Decimal(0)
     tax_amount = Decimal(0)
     total_amount = Decimal(0)
     for cart in carts:
-        products.append(cart['product_id'])
-        untaxed_amount += cart['untaxed_amount']
-        tax_amount += cart['amount_w_tax'] - cart['untaxed_amount']
-        total_amount += cart['amount_w_tax']
+        products.append(cart.product.id)
+        untaxed_amount += cart.untaxed_amount
+        tax_amount += cart.amount_w_tax - cart.untaxed_amount
+        total_amount += cart.amount_w_tax
 
     party = None
     addresses = []
@@ -776,19 +769,14 @@ def cart_list(lang):
     # Cross Sells
     crossells = []
     if CART_CROSSSELLS:
-        template_ids = []
-        for cproduct in carts:
-            template_ids.append(cproduct['template_id'])
-        template_fields = copy(CATALOG_TEMPLATE_FIELD_NAMES)
-        template_fields.append('esale_crosssells_by_shop')
-        templates = Template.read(template_ids, template_fields)
-        crossells_ids = []
+        template_ids = list({c.product.template.id for c in carts})
+        templates = Template.browse(template_ids)
+        crossells_ids = set()
         for template in templates:
-            for crossell in template['esale_crosssells_by_shop']:
-                if not crossell in crossells_ids and len(crossells_ids) < LIMIT_CROSSELLS:
-                    crossells_ids.append(crossell)
+            for crossell in template.esale_crosssells_by_shop:
+                crossells_ids.add(crossell.id)
         if crossells_ids:
-            crossells = Template.read(crossells_ids, CATALOG_TEMPLATE_FIELD_NAMES)
+            crossells = Template.browse(list(crossells_ids)[:LIMIT_CROSSELLS])
 
     # Breadcumbs
     breadcrumbs = [{
@@ -834,8 +822,7 @@ def cart_pending(lang):
                 ('galatea_user', '=', session['user']),
             ]
         ]
-    carts = Cart.search_read(
-        domain, offset=0, limit=10, order=order, fields_names=CART_FIELD_NAMES)
+    carts = Cart.search(domain, offset=0, limit=10, order=order)
 
     breadcrumbs = [{
         'slug': url_for('.cart', lang=g.language),
@@ -866,14 +853,10 @@ def cart_last_products(lang):
                 ('galatea_user', '=', session['user']),
             ]
         ]
-    cart_products = Cart.search_read(
-        domain, offset=0, limit=10, order=order, fields_names=CART_FIELD_NAMES)
-    last_product_ids = []
-    last_products = []
+    cart_products = Cart.search(domain, offset=0, limit=10, order=order)
+    last_products = set()
     for cproduct in cart_products:
-        if not cproduct['product_id'] in last_product_ids:
-            last_product_ids.append(cproduct['product_id'])
-            last_products.append(cproduct)
+        last_products.add(cproduct)
 
     breadcrumbs = [{
         'slug': url_for('.cart', lang=g.language),
@@ -883,6 +866,6 @@ def cart_last_products(lang):
         }]
 
     return render_template('cart-last-products.html',
-        products=last_products,
+        products=list(last_products),
         breadcrumbs=breadcrumbs,
     )
