@@ -208,6 +208,8 @@ def confirm(lang):
 
     sales, error = Cart.create_sale(carts, values)
     if error:
+        if not session.get('logged_in') and session.get('customer'):
+            session.pop('customer', None)
         current_app.logger.error('Sale. Error create sale from party (%s): %s' % (party.id, error))
     if not sales:
         flash(_('It has not been able to convert the cart into an order. ' \
@@ -227,6 +229,8 @@ def confirm(lang):
     try:
         Sale.quote([sale])
     except Exception as e:
+        if not session.get('logged_in') and session.get('customer'):
+            session.pop('customer', None)
         current_app.logger.info(e)
 
     if current_app.debug:
