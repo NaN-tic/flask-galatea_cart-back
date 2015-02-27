@@ -9,7 +9,6 @@ from flask.ext.wtf import Form
 from wtforms import TextField, SelectField, IntegerField, validators
 from trytond.transaction import Transaction
 from decimal import Decimal
-from copy import copy
 from emailvalid import check_email
 import vatnumber
 
