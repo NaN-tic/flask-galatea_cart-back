@@ -228,8 +228,6 @@ def confirm(lang):
     try:
         Sale.quote([sale])
     except Exception as e:
-        if not session.get('logged_in') and session.get('customer'):
-            session.pop('customer', None)
         current_app.logger.info(e)
 
     if current_app.debug:
