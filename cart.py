@@ -33,6 +33,7 @@ Sale = tryton.pool.get('sale.sale')
 SaleLine = tryton.pool.get('sale.line')
 Country = tryton.pool.get('country.country')
 Subdivision = tryton.pool.get('country.subdivision')
+GalateaUser = tryton.pool.get('galatea.user')
 
 PRODUCT_TYPE_STOCK = ['goods', 'assets']
 CART_ORDER = [
@@ -491,6 +492,17 @@ def checkout(lang):
     if not carts:
         flash(_('There are not products in your cart.'), 'danger')
         return redirect(url_for('.cart', lang=g.language))
+
+    # search user same email request
+    if not session.get('logged_in') and request.form.get('shipment_email'):
+        users = GalateaUser.search([
+            ('email', '=', request.form.get('shipment_email')),
+            ('active', '=', True),
+            ('websites', 'in', [GALATEA_WEBSITE]),
+            ], limit=1)
+        if users:
+            flash(_('Your email is already registed user. Please, login in.'), 'danger')
+            return redirect(url_for('.cart', lang=g.language))
 
     untaxed_amount = Decimal(0)
     tax_amount = Decimal(0)
