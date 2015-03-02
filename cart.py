@@ -590,7 +590,7 @@ def checkout(lang):
             address, = addresses
             values['shipment_address_name'] = address.full_address
         else:
-            errors.append(_('We can found address related yours address. ' \
+            errors.append(_('We can not find a related address. ' \
                 'Please, select a new address in Shipment Address'))
     else:
         errors.append(_('You not select new address and not a customer. ' \
