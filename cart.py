@@ -234,7 +234,7 @@ def confirm(lang):
     if current_app.debug:
         current_app.logger.info('Sale. Create sale %s' % sale.id)
 
-    flash(_('Successfully created  Sale Order.'), 'success')
+    flash(_('Successfully created a new order.'), 'success')
 
     return redirect(url_for('sale.sale', lang=g.language, id=sale.id))
 
@@ -593,7 +593,7 @@ def checkout(lang):
             errors.append(_('We can not find a related address. ' \
                 'Please, select a new address in Shipment Address'))
     else:
-        errors.append(_('You not select new address and not a customer. ' \
+        errors.append(_('You not select a new address and are not a customer. ' \
             'Please, select a new address in Shipment Address'))
 
     # Payment
