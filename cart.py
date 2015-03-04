@@ -22,6 +22,7 @@ LIMIT_CROSSELLS = current_app.config.get('TRYTON_CATALOG_LIMIT_CROSSSELLS', 10)
 MINI_CART_CODE = current_app.config.get('TRYTON_CATALOG_MINI_CART_CODE', False)
 
 Website = tryton.pool.get('galatea.website')
+GalateaUser = tryton.pool.get('galatea.user')
 Cart = tryton.pool.get('sale.cart')
 Template = tryton.pool.get('product.template')
 Product = tryton.pool.get('product.product')
@@ -33,7 +34,6 @@ Sale = tryton.pool.get('sale.sale')
 SaleLine = tryton.pool.get('sale.line')
 Country = tryton.pool.get('country.country')
 Subdivision = tryton.pool.get('country.subdivision')
-GalateaUser = tryton.pool.get('galatea.user')
 
 PRODUCT_TYPE_STOCK = ['goods', 'assets']
 CART_ORDER = [
@@ -714,13 +714,22 @@ def cart_list(lang):
     delivery_addresses = []
     invoice_addresses = []
     if session.get('customer'):
-        party = Party(session.get('customer'))
+        party = Party(session['customer'])
         for address in party.addresses:
             addresses.append(address)
             if address.delivery:
                 delivery_addresses.append(address)
             if address.invoice:
                 invoice_addresses.append(address)
+
+    default_invoice_address = None
+    default_delivery_address = None
+    if session.get('user'):
+        user = GalateaUser(session['user'])
+        if user.invoice_address:
+            default_invoice_address = user.invoice_address
+        if user.shipment_address:
+            default_delivery_address = user.shipment_address
 
     # Get payments. Shop payments or Party payment
     payments = []
@@ -806,7 +815,9 @@ def cart_list(lang):
             form_shipment_address=form_shipment_address,
             addresses=addresses,
             delivery_addresses=delivery_addresses,
+            default_delivery_address=default_delivery_address,
             invoice_addresses=invoice_addresses,
+            default_invoice_address=default_invoice_address,
             crossells=crossells,
             payments=payments,
             carriers=sorted(carriers, key=lambda k: k['price']),
