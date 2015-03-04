@@ -194,6 +194,7 @@ def confirm(lang):
 
     # Create new sale
     values = {}
+    values['esale'] = True
     values['shipment_cost_method'] = 'order' # force shipment invoice on order
     values['shipment_address'] = address
     payment_type = data.get('payment_type')
