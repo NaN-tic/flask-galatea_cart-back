@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, current_app, abort, g, url_for, \
 from galatea.tryton import tryton
 from galatea.csrf import csrf
 from galatea.utils import thumbnail
-from galatea.helpers import login_required
+from galatea.helpers import login_required, customer_required
 from flask.ext.babel import gettext as _, lazy_gettext, ngettext
 from flask.ext.wtf import Form
 from wtforms import TextField, SelectField, IntegerField, validators
@@ -863,6 +863,7 @@ def cart_pending(lang):
 
 @cart.route("/last-products", endpoint="cart-last-products")
 @login_required
+@customer_required
 @tryton.transaction()
 def cart_last_products(lang):
     '''Last products'''
