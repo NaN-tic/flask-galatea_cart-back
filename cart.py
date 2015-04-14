@@ -177,6 +177,7 @@ def confirm(lang):
     else:
         name = data.get('invoice_name') or data.get('shipment_name')
         email = data.get('invoice_email') or data.get('shipment_email')
+
         if not check_email(email):
             flash(_('Email "{email}" is not valid.').format(
                 email=email), 'danger')
@@ -527,6 +528,8 @@ def checkout(lang):
     errors = []
     shop = Shop(SHOP)
 
+    email = request.form.get('invoice_email') or request.form.get('shipment_email')
+
     domain = [
         ('state', '=', 'draft'),
         ('shop', '=', SHOP),
@@ -548,7 +551,7 @@ def checkout(lang):
     # search user same email request
     if not session.get('logged_in') and request.form.get('shipment_email'):
         users = GalateaUser.search([
-            ('email', '=', request.form.get('shipment_email')),
+            ('email', '=', email),
             ('active', '=', True),
             ('websites', 'in', [GALATEA_WEBSITE]),
             ], limit=1)
@@ -650,9 +653,10 @@ def checkout(lang):
             values['shipment_email'] = session['email']
         else:
             shipment_email = request.form.get('shipment_email')
-            if not check_email(shipment_email):
-                errors.append(_('Email not valid.'))
-            values['shipment_email'] = shipment_email
+            if shipment_email:
+                if not check_email(shipment_email):
+                    errors.append(_('Email not valid.'))
+                values['shipment_email'] = shipment_email
 
         shipment_country = request.form.get('shipment_country')
         if shipment_country:
@@ -667,8 +671,7 @@ def checkout(lang):
             values['shipment_subdivision_name'] = subdivision.name
 
         if not values['shipment_name'] or not values['shipment_street'] \
-                or not values['shipment_zip'] or not values['shipment_city'] \
-                or not values['shipment_email']:
+                or not values['shipment_zip'] or not values['shipment_city']:
             errors.append(_('Error when validate Shipment Address. ' \
                 'Please, return to cart and complete Shipment Address'))
 
