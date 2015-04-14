@@ -45,6 +45,7 @@ VAT_COUNTRIES = [('', '')]
 for country in vatnumber.countries():
     VAT_COUNTRIES.append((country, country))
 
+
 class ShipmentAddressForm(Form):
     "Shipment Address form"
     shipment_name = TextField(lazy_gettext('Name'), [validators.Required()])
@@ -55,8 +56,30 @@ class ShipmentAddressForm(Form):
     shipment_subdivision = IntegerField(lazy_gettext('Subdivision'), [validators.Required()])
     shipment_email = TextField(lazy_gettext('E-mail'), [validators.Required(), validators.Email()])
     shipment_phone = TextField(lazy_gettext('Phone'))
-    vat_country = SelectField(lazy_gettext('VAT Country'), [validators.Required(), ])
-    vat_number = TextField(lazy_gettext('VAT Number'), [validators.Required()])
+    vat_country = SelectField(lazy_gettext('VAT Country'))
+    vat_number = TextField(lazy_gettext('VAT Number'))
+
+    def __init__(self, *args, **kwargs):
+        Form.__init__(self, *args, **kwargs)
+
+    def validate(self):
+        rv = Form.validate(self)
+        if not rv:
+            return False
+        return True
+
+class InvoiceAddressForm(Form):
+    "Shipment Address form"
+    invoice_name = TextField(lazy_gettext('Name'), [validators.Required()])
+    invoice_street = TextField(lazy_gettext('Street'), [validators.Required()])
+    invoice_city = TextField(lazy_gettext('City'), [validators.Required()])
+    invoice_zip = TextField(lazy_gettext('Zip'), [validators.Required()])
+    invoice_country = SelectField(lazy_gettext('Country'), [validators.Required(), ], coerce=int)
+    invoice_subdivision = IntegerField(lazy_gettext('Subdivision'), [validators.Required()])
+    invoice_email = TextField(lazy_gettext('E-mail'), [validators.Required(), validators.Email()])
+    invoice_phone = TextField(lazy_gettext('Phone'))
+    vat_country = SelectField(lazy_gettext('VAT Country'))
+    vat_number = TextField(lazy_gettext('VAT Number'))
 
     def __init__(self, *args, **kwargs):
         Form.__init__(self, *args, **kwargs)
@@ -126,9 +149,8 @@ def confirm(lang):
     data = request.form
 
     party = session.get('customer')
+    invoice_address = data.get('invoice_address')
     shipment_address = data.get('shipment_address')
-    name = data.get('shipment_name')
-    email = data.get('shipment_email')
 
     # Get all carts
     domain = [
@@ -153,6 +175,8 @@ def confirm(lang):
     if party:
         party = Party(party)
     else:
+        name = data.get('invoice_name') or data.get('shipment_name')
+        email = data.get('invoice_email') or data.get('shipment_email')
         if not check_email(email):
             flash(_('Email "{email}" is not valid.').format(
                 email=email), 'danger')
@@ -166,8 +190,32 @@ def confirm(lang):
             })
         session['customer'] = party.id
 
+    if invoice_address:
+        if invoice_address != 'new-address':
+            invoice_address = Address(invoice_address)
+        else:
+            country = None
+            if data.get('invoice_country'):
+                country = int(data.get('invoice_country'))
+            subdivision = None
+            if data.get('invoice_subdivision'):
+                subdivision = int(data.get('invoice_subdivision'))
+
+            values = {
+                'name': data.get('invoice_name'),
+                'street': data.get('invoice_street'),
+                'city': data.get('invoice_city'),
+                'zip': data.get('invoice_zip'),
+                'country': country,
+                'subdivision': subdivision,
+                'phone': data.get('invoice_phone'),
+                'email': data.get('invoice_email'),
+                'fax': None,
+                }
+            invoice_address = Address.esale_create_address(shop, party, values)
+
     if shipment_address != 'new-address':
-        address = Address(shipment_address)
+        shipment_address = Address(shipment_address)
     else:
         country = None
         if data.get('shipment_country'):
@@ -177,17 +225,17 @@ def confirm(lang):
             subdivision = int(data.get('shipment_subdivision'))
 
         values = {
-            'name': name,
+            'name': data.get('shipment_name'),
             'street': data.get('shipment_street'),
             'city': data.get('shipment_city'),
             'zip': data.get('shipment_zip'),
             'country': country,
             'subdivision': subdivision,
             'phone': data.get('shipment_phone'),
-            'email': email,
+            'email': data.get('shipment_email'),
             'fax': None,
             }
-        address = Address.esale_create_address(shop, party, values)
+        shipment_address = Address.esale_create_address(shop, party, values)
 
     # Carts are same party to create a new sale
     Cart.write(carts, {'party': party})
@@ -196,7 +244,10 @@ def confirm(lang):
     values = {}
     values['esale'] = True
     values['shipment_cost_method'] = 'order' # force shipment invoice on order
-    values['shipment_address'] = address
+    if invoice_address:
+        values['invoice_address'] = invoice_address
+
+    values['shipment_address'] = shipment_address
     payment_type = data.get('payment_type')
     if payment_type:
         values['payment_type'] = int(payment_type)
@@ -529,6 +580,58 @@ def checkout(lang):
     if session.get('customer'):
         party = Party(session.get('customer'))
 
+    # Invoice Address
+    invoice_address = request.form.get('invoice_address')
+    if invoice_address:
+        values['invoice_address'] = invoice_address
+        if invoice_address == 'new-address':
+            values['invoice_name'] = request.form.get('invoice_name')
+            values['invoice_street'] = request.form.get('invoice_street')
+            values['invoice_zip'] = request.form.get('invoice_zip')
+            values['invoice_city'] = request.form.get('invoice_city')
+            values['invoice_phone'] = request.form.get('invoice_phone')
+
+            if session.get('email'):
+                values['invoice_email'] = session['email']
+            else:
+                invoice_email = request.form.get('invoice_email')
+                if not check_email(invoice_email):
+                    errors.append(_('Email not valid.'))
+                values['invoice_email'] = invoice_email
+
+            invoice_country = request.form.get('invoice_country')
+            if invoice_country:
+                values['invoice_country'] = invoice_country
+                country, = Country.browse([invoice_country])
+                values['invoice_country_name'] = country.name
+
+            invoice_subdivision = request.form.get('invoice_subdivision')
+            if invoice_subdivision:
+                values['invoice_subdivision'] = invoice_subdivision
+                subdivision, = Subdivision.browse([invoice_subdivision])
+                values['invoice_subdivision_name'] = subdivision.name
+
+            if not values['invoice_name'] or not values['invoice_street'] \
+                    or not values['invoice_zip'] or not values['invoice_city'] \
+                    or not values['invoice_email']:
+                errors.append(_('Error when validate Invoice Address. ' \
+                    'Please, return to cart and complete Invoice Address'))
+        elif party:
+            addresses = Address.search([
+                ('party', '=', party),
+                ('id', '=', int(invoice_address)),
+                ('active', '=', True),
+                ], order=[('sequence', 'ASC'), ('id', 'ASC')])
+            if addresses:
+                address, = addresses
+                values['invoice_address_name'] = address.full_address
+            else:
+                errors.append(_('We can not found a related address. ' \
+                    'Please, select a new address in Invoice Address'))
+        else:
+            errors.append(_('You not select a new address and are not a customer. ' \
+                'Please, select a new address in Invoice Address'))
+
     # Shipment Address
     #~ form_shipment_address = ShipmentAddressForm()
     shipment_address = request.form.get('shipment_address')
@@ -591,7 +694,7 @@ def checkout(lang):
             address, = addresses
             values['shipment_address_name'] = address.full_address
         else:
-            errors.append(_('We can not find a related address. ' \
+            errors.append(_('We can not found a related address. ' \
                 'Please, select a new address in Shipment Address'))
     else:
         errors.append(_('You not select a new address and are not a customer. ' \
@@ -677,8 +780,15 @@ def cart_list(lang):
 
     shop = Shop(SHOP)
 
+    form_invoice_address = InvoiceAddressForm(
+        country=shop.esale_country.id,
+        vat_country=shop.esale_country.code)
+    countries = [(c.id, c.name) for c in shop.esale_countrys]
+    form_invoice_address.invoice_country.choices = countries
+    form_invoice_address.vat_country.choices = VAT_COUNTRIES
+
     form_shipment_address = ShipmentAddressForm(
-        shipment_country=shop.esale_country.id,
+        country=shop.esale_country.id,
         vat_country=shop.esale_country.code)
     countries = [(c.id, c.name) for c in shop.esale_countrys]
     form_shipment_address.shipment_country.choices = countries
@@ -812,6 +922,7 @@ def cart_list(lang):
             breadcrumbs=breadcrumbs,
             shop=shop,
             carts=carts,
+            form_invoice_address=form_invoice_address,
             form_shipment_address=form_shipment_address,
             addresses=addresses,
             delivery_addresses=delivery_addresses,
