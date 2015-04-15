@@ -34,6 +34,8 @@ Sale = tryton.pool.get('sale.sale')
 SaleLine = tryton.pool.get('sale.line')
 Country = tryton.pool.get('country.country')
 Subdivision = tryton.pool.get('country.subdivision')
+Carrier = tryton.pool.get('carrier')
+PaymentType = tryton.pool.get('account.payment.type')
 
 PRODUCT_TYPE_STOCK = ['goods', 'assets']
 CART_ORDER = [
@@ -89,6 +91,89 @@ class InvoiceAddressForm(Form):
         if not rv:
             return False
         return True
+
+def get_carriers(shop, party=None, untaxed=0, tax=0, total=0, payment=None):
+    '''Return carriers and calculate delivery price from a virtual sale'''
+    sale = Sale()
+    sale.untaxed_amount = untaxed
+    sale.tax_amount = tax
+    sale.total_amount = total
+    if isinstance(payment, int):
+        sale.payment_type = PaymentType(payment)
+    else:
+        sale.payment_type = payment
+
+    context = {}
+    context['record'] = sale # Eval by "carrier formula" require "record"
+
+    carriers = []
+    decimals = "%0."+str(shop.esale_currency.digits)+"f" # "%0.2f" euro
+
+    if party:
+        if hasattr(party, 'carrier'):
+            carrier = party.carrier
+            sale.carrier = carrier
+            if carrier:
+                context['carrier'] = carrier
+                with Transaction().set_context(context):
+                    carrier_price = carrier.get_sale_price() # return price, currency
+                price = carrier_price[0]
+                price_w_tax = carrier.get_sale_price_w_tax(price)
+                carriers.append({
+                    'id': party.carrier.id,
+                    'name': party.carrier.rec_name,
+                    'price': float(Decimal(decimals % price)),
+                    'price_w_tax': float(Decimal(decimals % price_w_tax)),
+                    })
+
+    if not carriers:
+        for c in shop.esale_carriers:
+            carrier = c.carrier
+            sale.carrier = carrier
+            context['carrier'] = carrier
+            with Transaction().set_context(context):
+                carrier_price = carrier.get_sale_price() # return price, currency
+            price = carrier_price[0]
+            price_w_tax = carrier.get_sale_price_w_tax(price)
+            carriers.append({
+                'id': carrier.id,
+                'name': carrier.rec_name,
+                'price': float(Decimal(decimals % price)),
+                'price_w_tax': float(Decimal(decimals % price_w_tax)),
+                })
+    return carriers
+
+@cart.route('/carriers', methods=['GET'], endpoint="carriers")
+@tryton.transaction()
+def carriers(lang):
+    '''Return all carriers (JSON)'''
+    zip = request.args.get('zip', None)
+    party = request.args.get('party', None)
+    untaxed = request.args.get('untaxed', None)
+    tax = request.args.get('tax', None)
+    total = request.args.get('total', None)
+    payment = request.args.get('payment', None)
+
+    shop = Shop(SHOP)
+    carriers = get_carriers(
+        shop=shop,
+        party=party,
+        untaxed=Decimal(untaxed) if untaxed else 0,
+        tax=Decimal(tax) if tax else 0,
+        total=Decimal(total) if total else 0,
+        payment=int(payment) if untaxed else None,
+        )
+
+    if zip:
+        zip_carriers = []
+        for carrier in Carrier.get_carriers_from_zip(zip):
+            for c in carriers:
+                if carrier.id == c['id']:
+                    zip_carriers.append(c)
+                    break
+        carriers = zip_carriers
+
+    return jsonify(result=carriers)
 
 @cart.route('/json/my-cart', methods=['GET', 'PUT'], endpoint="my-cart")
 @tryton.transaction()
@@ -860,47 +945,13 @@ def cart_list(lang):
     stockable = Carrier.get_products_stockable(products)
     carriers = []
     if stockable:
-        # create a virtual sale
-        sale = Sale()
-        sale.untaxed_amount = untaxed_amount
-        sale.tax_amount = tax_amount
-        sale.total_amount = total_amount
-        sale.payment_type = default_payment
-
-        context = {}
-        context['record'] = sale # Eval by "carrier formula" require "record"
-
-        if party:
-            if hasattr(party, 'carrier'):
-                carrier = party.carrier
-                sale.carrier = carrier
-                if carrier:
-                    context['carrier'] = carrier
-                    with Transaction().set_context(context):
-                        carrier_price = carrier.get_sale_price() # return price, currency
-                    price = carrier_price[0]
-                    price_w_tax = carrier.get_sale_price_w_tax(price)
-                    carriers.append({
-                        'id': party.carrier.id,
-                        'name': party.carrier.rec_name,
-                        'price': price,
-                        'price_w_tax': price_w_tax,
-                        })
-        if not carriers:
-            for c in shop.esale_carriers:
-                carrier = c.carrier
-                sale.carrier = carrier
-                context['carrier'] = carrier
-                with Transaction().set_context(context):
-                    carrier_price = carrier.get_sale_price() # return price, currency
-                price = carrier_price[0]
-                price_w_tax = carrier.get_sale_price_w_tax(price)
-                carriers.append({
-                    'id': carrier.id,
-                    'name': carrier.rec_name,
-                    'price': price,
-                    'price_w_tax': price_w_tax,
-                    })
+        carriers = get_carriers(
+            shop=shop,
+            party=party,
+            untaxed=untaxed_amount,
+            tax=tax_amount,
+            total=total_amount,
+            payment=default_payment)
 
     # Cross Sells
     crossells = []
