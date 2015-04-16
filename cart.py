@@ -108,12 +108,13 @@ def get_carriers(shop, party=None, untaxed=0, tax=0, total=0, payment=None):
 
     carriers = []
     decimals = "%0."+str(shop.esale_currency.digits)+"f" # "%0.2f" euro
+    default_party = None
 
     if party:
         if hasattr(party, 'carrier'):
             carrier = party.carrier
-            sale.carrier = carrier
             if carrier:
+                sale.carrier = carrier
                 context['carrier'] = carrier
                 with Transaction().set_context(context):
                     carrier_price = carrier.get_sale_price() # return price, currency
@@ -125,39 +126,45 @@ def get_carriers(shop, party=None, untaxed=0, tax=0, total=0, payment=None):
                     'price': float(Decimal(decimals % price)),
                     'price_w_tax': float(Decimal(decimals % price_w_tax)),
                     })
+                default_party = party.carrier
 
-    if not carriers:
-        for c in shop.esale_carriers:
-            carrier = c.carrier
-            sale.carrier = carrier
-            context['carrier'] = carrier
-            with Transaction().set_context(context):
-                carrier_price = carrier.get_sale_price() # return price, currency
-            price = carrier_price[0]
-            price_w_tax = carrier.get_sale_price_w_tax(price)
-            carriers.append({
-                'id': carrier.id,
-                'name': carrier.rec_name,
-                'price': float(Decimal(decimals % price)),
-                'price_w_tax': float(Decimal(decimals % price_w_tax)),
-                })
-    return carriers
+    for c in shop.esale_carriers:
+        carrier = c.carrier
+        if carrier == default_party:
+            continue
+
+        sale.carrier = carrier
+        context['carrier'] = carrier
+        with Transaction().set_context(context):
+            carrier_price = carrier.get_sale_price() # return price, currency
+        price = carrier_price[0]
+        price_w_tax = carrier.get_sale_price_w_tax(price)
+        carriers.append({
+            'id': carrier.id,
+            'name': carrier.rec_name,
+            'price': float(Decimal(decimals % price)),
+            'price_w_tax': float(Decimal(decimals % price_w_tax)),
+            })
+
+    return sorted(carriers, key=lambda k: k['price'])
+
 
 @cart.route('/carriers', methods=['GET'], endpoint="carriers")
 @tryton.transaction()
 def carriers(lang):
     '''Return all carriers (JSON)'''
     zip = request.args.get('zip', None)
-    party = request.args.get('party', None)
     untaxed = request.args.get('untaxed', None)
     tax = request.args.get('tax', None)
     total = request.args.get('total', None)
     payment = request.args.get('payment', None)
 
+    customer = session.get('customer', None)
+
     shop = Shop(SHOP)
     carriers = get_carriers(
         shop=shop,
-        party=party,
+        party=Party(customer) if customer else None,
         untaxed=Decimal(untaxed) if untaxed else 0,
         tax=Decimal(tax) if tax else 0,
         total=Decimal(total) if total else 0,
@@ -985,7 +992,7 @@ def cart_list(lang):
             default_invoice_address=default_invoice_address,
             crossells=crossells,
             payments=payments,
-            carriers=sorted(carriers, key=lambda k: k['price']),
+            carriers=carriers,
             stockable=stockable,
             prices={
                 'untaxed_amount': untaxed_amount,
