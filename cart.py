@@ -482,7 +482,7 @@ def add(lang):
         ('id', 'in', products_current_cart),
         ('template.esale_available', '=', True),
         ('template.esale_active', '=', True),
-        ('template.esale_saleshops', 'in', [SHOP]),
+        ('template.shops', 'in', [SHOP]),
         ])
 
     # Delete products data
