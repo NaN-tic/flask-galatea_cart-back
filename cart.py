@@ -178,7 +178,7 @@ def carriers(lang):
                 if carrier.id == c['id']:
                     zip_carriers.append(c)
                     break
-        carriers = zip_carriers
+        carriers = sorted(zip_carriers, key=lambda k: k['price'])
 
     return jsonify(result=carriers)
 
