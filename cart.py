@@ -305,7 +305,8 @@ def confirm(lang):
                 'email': data.get('invoice_email'),
                 'fax': None,
                 }
-            invoice_address = Address.esale_create_address(shop, party, values)
+            invoice_address = Address.esale_create_address(
+                shop, party, values, type='invoice')
 
     if shipment_address != 'new-address':
         shipment_address = Address(shipment_address)
@@ -328,7 +329,10 @@ def confirm(lang):
             'email': data.get('shipment_email'),
             'fax': None,
             }
-        shipment_address = Address.esale_create_address(shop, party, values)
+        if not invoice_address:
+            values['invoice'] = True
+        shipment_address = Address.esale_create_address(
+            shop, party, values, type='delivery')
 
     # Carts are same party to create a new sale
     Cart.write(carts, {'party': party})
