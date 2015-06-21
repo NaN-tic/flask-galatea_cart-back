@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, current_app, abort, g, url_for, \
 from galatea.tryton import tryton
 from galatea.csrf import csrf
 from galatea.utils import thumbnail
-from galatea.helpers import login_required, customer_required
+from galatea.helpers import login_required
 from flask.ext.babel import gettext as _, lazy_gettext, ngettext
 from flask.ext.wtf import Form
 from wtforms import TextField, SelectField, IntegerField, validators
@@ -1034,40 +1034,5 @@ def cart_pending(lang):
 
     return render_template('cart-pending.html',
         carts=carts,
-        breadcrumbs=breadcrumbs,
-    )
-
-@cart.route("/last-products", endpoint="cart-last-products")
-@login_required
-@customer_required
-@tryton.transaction()
-def cart_last_products(lang):
-    '''Last products'''
-    order = [
-        ('cart_date', 'DESC'),
-        ('id', 'DESC'),
-        ]
-
-    domain = [
-        ('state', '=', 'done'),
-            ['OR', 
-                ('party', '=', session['customer']),
-                ('galatea_user', '=', session['user']),
-            ]
-        ]
-    cart_products = Cart.search(domain, offset=0, limit=10, order=order)
-    last_products = set()
-    for cproduct in cart_products:
-        last_products.add(cproduct)
-
-    breadcrumbs = [{
-        'slug': url_for('.cart', lang=g.language),
-        'name': _('Cart'),
-        }, {
-        'name': _('Last Products'),
-        }]
-
-    return render_template('cart-last-products.html',
-        products=list(last_products),
         breadcrumbs=breadcrumbs,
     )
