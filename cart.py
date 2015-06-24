@@ -989,6 +989,7 @@ def cart_list(lang):
             carts=carts,
             form_invoice_address=form_invoice_address,
             form_shipment_address=form_shipment_address,
+            party=party,
             addresses=addresses,
             delivery_addresses=delivery_addresses,
             default_delivery_address=default_delivery_address,
