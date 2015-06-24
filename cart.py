@@ -119,7 +119,7 @@ def get_carriers(shop, party=None, untaxed=0, tax=0, total=0, payment=None):
                 with Transaction().set_context(context):
                     carrier_price = carrier.get_sale_price() # return price, currency
                 price = carrier_price[0]
-                price_w_tax = carrier.get_sale_price_w_tax(price)
+                price_w_tax = carrier.get_sale_price_w_tax(price, party=party)
                 carriers.append({
                     'id': party.carrier.id,
                     'name': party.carrier.rec_name,
@@ -138,7 +138,7 @@ def get_carriers(shop, party=None, untaxed=0, tax=0, total=0, payment=None):
         with Transaction().set_context(context):
             carrier_price = carrier.get_sale_price() # return price, currency
         price = carrier_price[0]
-        price_w_tax = carrier.get_sale_price_w_tax(price)
+        price_w_tax = carrier.get_sale_price_w_tax(price, party=party)
         carriers.append({
             'id': carrier.id,
             'name': carrier.rec_name,
@@ -371,7 +371,7 @@ def confirm(lang):
     if carrier_price:
         product = shop.esale_delivery_product
         shipment_price = Decimal(carrier_price)
-        shipment_line = SaleLine.get_shipment_line(product, shipment_price, sale)
+        shipment_line = SaleLine.get_shipment_line(product, shipment_price, sale, party)
         shipment_line.save()
 
     # sale draft to quotation
@@ -834,7 +834,7 @@ def checkout(lang):
         with Transaction().set_context(context):
             carrier_price = carrier.get_sale_price() # return price, currency
         price = carrier_price[0]
-        price_w_tax = carrier.get_sale_price_w_tax(price)
+        price_w_tax = carrier.get_sale_price_w_tax(price, party=party)
         values['carrier'] = carrier
         values['carrier_name'] = carrier.rec_name
         values['carrier_cost'] = price
