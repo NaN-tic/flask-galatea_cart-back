@@ -525,32 +525,29 @@ def add(lang):
                 continue
 
         cart = Cart()
+        defaults = cart.default_get(cart._fields.keys(), with_rec_name=False)
+        for key in defaults:
+            setattr(cart, key, defaults[key])
         cart.party = session.get('customer', None)
         cart.quantity = qty
         cart.product = product.id
         cart.sid = session.sid
         cart.galatea_user = session.get('user', None)
-        vals = cart.on_change_product()
+        for k, v in cart.on_change_product().iteritems():
+            setattr(cart, k, v)
 
         # Create data
         if product_id not in products_in_cart and qty > 0:
-            vals['party'] = session.get('customer', None)
-            vals['quantity'] = qty
-            vals['product'] = product.id
-            vals['sid'] = session.sid
-            vals['galatea_user'] = session.get('user', None)
-            to_create.append(vals)
-
+            to_create.append(cart._save_values)
         # Update data
         if product_id in products_in_cart: 
             for cart in carts:
                 if cart.product.id == product_id:
                     if qty > 0:
-                        vals['quantity'] = qty
-                        to_update.append({
-                            'cart': cart,
-                            'values': vals,
-                            })
+                        cart.quantity = qty
+                        for k, v in cart.on_change_quantity().iteritems():
+                            setattr(cart, k, v)
+                        to_update.extend(([cart], cart._save_values))
                     else: # Remove data when qty <= 0
                         to_remove.append(cart)
                     break
@@ -573,15 +570,14 @@ def add(lang):
 
     # Update Cart
     if to_update:
-        for update in to_update:
-            Cart.write([update['cart']], update['values'])
-        total = len(to_update)
+        Cart.write(*to_update)
+        total = len(to_update)/2
         if to_remove:
             total = total-len(to_remove)
         flash(ngettext(
             '%(num)s product has been updated in your cart.',
             '%(num)s products have been updated in your cart.',
-            len(to_update)), 'success')
+            total), 'success')
 
     # Delete Cart
     if to_remove:
