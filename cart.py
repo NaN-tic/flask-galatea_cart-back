@@ -308,7 +308,14 @@ def confirm(lang):
             invoice_address = Address.esale_create_address(
                 shop, party, values, type='invoice')
 
-    if shipment_address != 'new-address':
+    if shipment_address == 'invoice_address':
+        if invoice_address:
+            shipment_address = invoice_address
+        else:
+            flash(_('You have selected that the delivery address is ' \
+                'the invoice address. Select an Invoice Address.'), 'danger')
+            return redirect(url_for('.cart', lang=g.language))
+    elif shipment_address != 'new-address':
         shipment_address = Address(shipment_address)
     else:
         country = None
@@ -734,7 +741,9 @@ def checkout(lang):
         flash(_('Select a Shipment Address.'), 'danger')
         return redirect(url_for('.cart', lang=g.language))
     values['shipment_address'] = shipment_address
-    if shipment_address == 'new-address':
+    if shipment_address == 'invoice_address':
+        pass
+    elif shipment_address == 'new-address':
         values['shipment_name'] = request.form.get('shipment_name')
         values['shipment_street'] = request.form.get('shipment_street')
         values['shipment_zip'] = request.form.get('shipment_zip')
