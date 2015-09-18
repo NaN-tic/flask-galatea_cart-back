@@ -950,12 +950,11 @@ def cart_list(lang):
     default_payment = None
     if shop.esale_payments:
         default_payment = shop.esale_payments[0].payment_type
+        payments = [payment.payment_type for payment in shop.esale_payments]
         if party:
             if hasattr(party, 'customer_payment_type'):
                 if party.customer_payment_type:
-                    payments = [party.customer_payment_type]
-        if not payments:
-            payments = [payment.payment_type for payment in shop.esale_payments]
+                    default_payment = party.customer_payment_type
 
     # Get carriers. Shop carriers or Party carrier
     stockable = Carrier.get_products_stockable(products)
@@ -1002,6 +1001,7 @@ def cart_list(lang):
             default_invoice_address=default_invoice_address,
             crossells=crossells,
             payments=payments,
+            default_payment=default_payment,
             carriers=carriers,
             stockable=stockable,
             prices={
