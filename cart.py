@@ -955,6 +955,10 @@ def cart_list(lang):
             if hasattr(party, 'customer_payment_type'):
                 if party.customer_payment_type:
                     default_payment = party.customer_payment_type
+    if party and hasattr(party, 'customer_payment_type'):
+        customer_payment = party.customer_payment_type
+        if not customer_payment in payments:
+            payments.append(customer_payment)
 
     # Get carriers. Shop carriers or Party carrier
     stockable = Carrier.get_products_stockable(products)
