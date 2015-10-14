@@ -957,7 +957,7 @@ def cart_list(lang):
                     default_payment = party.customer_payment_type
     if party and hasattr(party, 'customer_payment_type'):
         customer_payment = party.customer_payment_type
-        if not customer_payment in payments:
+        if customer_payment and not customer_payment in payments:
             payments.append(customer_payment)
 
     # Get carriers. Shop carriers or Party carrier
