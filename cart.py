@@ -305,6 +305,8 @@ def confirm(lang):
                 'email': data.get('invoice_email'),
                 'fax': None,
                 }
+            if shipment_address == 'invoice_address':
+                values['delivery'] = True
             invoice_address = Address.esale_create_address(
                 shop, party, values, type='invoice')
 
