@@ -809,7 +809,7 @@ def checkout(lang):
     # Payment
     payment = int(request.form.get('payment'))
     payment_type = None
-    if party and hasattr(party, 'customer_payment_type'):
+    if not payment and (party and hasattr(party, 'customer_payment_type')):
         if party.customer_payment_type:
             payment_type = party.customer_payment_type
             values['payment'] = payment_type.id
