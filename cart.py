@@ -363,6 +363,8 @@ def confirm(lang):
     comment = data.get('comment')
     if comment:
         values['comment'] = comment
+    if session.get('user'): # login user
+        values['galatea_user'] = session['user']
 
     sales, error = Cart.create_sale(carts, values)
     if error:
