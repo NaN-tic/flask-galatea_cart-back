@@ -3,7 +3,7 @@ from flask import Blueprint, render_template, current_app, abort, g, url_for, \
 from galatea.tryton import tryton
 from galatea.csrf import csrf
 from galatea.utils import thumbnail
-from galatea.helpers import login_required
+from galatea.helpers import login_required, customer_required
 from flask.ext.babel import gettext as _, lazy_gettext, ngettext
 from flask.ext.wtf import Form
 from wtforms import TextField, SelectField, IntegerField, validators
@@ -1050,3 +1050,76 @@ def cart_pending(lang):
         carts=carts,
         breadcrumbs=breadcrumbs,
     )
+
+@cart.route("/clone/", methods=["POST"], endpoint="clone")
+@login_required
+@customer_required
+@tryton.transaction()
+def clone(lang):
+    '''Copy Sale Lines to new carts'''
+    id = request.form.get('id')
+    if not id:
+        flash(_('Error when clone. Select a sale to clone.'), "danger")
+        return redirect(url_for('.sales', lang=g.language))
+
+    sales = Sale.search([
+        ('id', '=', id),
+        ('shop', 'in', SHOPS),
+        ('party', '=', session['customer']),
+        ], limit=1)
+    if not sales:
+        flash(_('Error when clone. You not have permisions to clone.'), "danger")
+        return redirect(url_for('.sales', lang=g.language))
+
+    sale, = sales
+
+    products = set()
+    for l in sale.lines:
+        if l.product and l.product.esale_available:
+            products.add(l.product.id)
+
+    # Search current carts by user or session
+    domain = [
+        ('state', '=', 'draft'),
+        ('shop', '=', SHOP),
+        ]
+    if session.get('user'): # login user
+        domain.append(['OR', 
+            ('sid', '=', session.sid),
+            ('galatea_user', '=', session['user']),
+            ])
+    else: # anonymous user
+        domain.append(
+            ('sid', '=', session.sid),
+            )
+    carts = Cart.search(domain, order=[('cart_date', 'ASC')])
+
+    # remove products that exist in current cart
+    for c in carts:
+        if c.product.id in products:
+            products.remove(c.product.id)
+
+    to_create = []
+    for product_id in products:
+        cart = Cart()
+        defaults = cart.default_get(cart._fields.keys(), with_rec_name=False)
+        for key in defaults:
+            setattr(cart, key, defaults[key])
+        cart.party = sale.party.id
+        cart.quantity = 1
+        cart.product = product_id
+        cart.sid = session.sid
+        cart.galatea_user = session.get('user', None)
+        for k, v in cart.on_change_product().iteritems():
+            setattr(cart, k, v)
+
+        to_create.append(cart._save_values)
+
+    if to_create:
+        Cart.create(to_create)
+        flash(ngettext(
+            '%(num)s product has been added in your cart.',
+            '%(num)s products have been added in your cart.',
+            len(to_create)), 'success')
+
+    return redirect(url_for('.cart', lang=g.language))
