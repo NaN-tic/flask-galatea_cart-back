@@ -1108,8 +1108,7 @@ def clone(lang):
         cart.product = product_id
         cart.sid = session.sid
         cart.galatea_user = session.get('user', None)
-        for k, v in cart.on_change_product().iteritems():
-            setattr(cart, k, v)
+        cart.on_change_product()
 
         to_create.append(cart._save_values)
 
