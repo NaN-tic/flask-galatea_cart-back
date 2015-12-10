@@ -544,8 +544,7 @@ def add(lang):
         cart.product = product.id
         cart.sid = session.sid
         cart.galatea_user = session.get('user', None)
-        for k, v in cart.on_change_product().iteritems():
-            setattr(cart, k, v)
+        cart.on_change_product()
 
         # Create data
         if product_id not in products_in_cart and qty > 0:
@@ -556,8 +555,7 @@ def add(lang):
                 if cart.product.id == product_id:
                     if qty > 0:
                         cart.quantity = qty
-                        for k, v in cart.on_change_quantity().iteritems():
-                            setattr(cart, k, v)
+                        cart.on_change_quantity()
                         to_update.extend(([cart], cart._save_values))
                     else: # Remove data when qty <= 0
                         to_remove.append(cart)
